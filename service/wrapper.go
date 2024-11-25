@@ -17,7 +17,15 @@ func (w *Wrapper) Context() *Context {
 }
 
 // NewWrapper returns a new instance of the wrapper.
-func NewWrapper(s Service, sCtx *Context) *Wrapper {
+func NewWrapper(s Service, opts ...Option) *Wrapper {
+	sCtx := &Context{
+		terminationChan: make(chan struct{}),
+	}
+
+	for _, opt := range opts {
+		opt(sCtx)
+	}
+
 	return &Wrapper{
 		s:    s,
 		sCtx: sCtx,
