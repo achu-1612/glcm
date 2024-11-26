@@ -13,6 +13,7 @@ import (
 	fig "github.com/common-nighthawk/go-figure"
 )
 
+// Base is the blueprint for the runner.
 type Base interface {
 	// BottUp boots up the runner. This will start all the registered services.
 	BootUp(context.Context)
@@ -28,6 +29,8 @@ type Base interface {
 
 	// Wait waits for the runner to stop.
 	// Note: This is a blocking call. It is to be called after BootUp.
+	// Only a ShutDown() call will stop the runner.
+	// Even after all the registered services are stopped, runner would still be running.
 	Wait()
 }
 
@@ -78,13 +81,13 @@ func (r *runner) BootUp(ctx context.Context) {
 	fig.NewColorFigure("GLCM", "isometric1", "green", true).Print()
 
 	if ctx == nil {
-		log.Warn("context is nil. Using the background context.")
+		log.Warn("Base Context is empty. Using the background context.")
 
 		ctx = context.Background()
 	}
 
 	if r.isRunning {
-		log.Info("runner is already running. Doing nothing.")
+		log.Info("Runner is already running. Doing nothing.")
 
 		return
 	}
@@ -95,44 +98,69 @@ func (r *runner) BootUp(ctx context.Context) {
 	// if no service has been registered.
 	r.wg.Add(1)
 
-	log.Info("Booting up Runner ...")
+	log.Info("Booting up Base Runner ...")
 
 	for _, svc := range r.svc {
-
 		// Adding the service to the wait group.
 		r.wg.Add(1)
 
 		go func(svc *service.Wrapper) {
-			defer svc.Context().Done()
-			defer log.Infof("service %s stopped", svc.Service().Name())
 
-			preHookErrorIgnore := svc.Context().IgnorePreRunHooksError()
-			postHookErrorIgnore := svc.Context().IgnorePostRunHooksError()
+			defer func() {
+				svc.Context().Done() // indicate the worker group that the service has stopped.
+				log.Infof("service %s stopped", svc.Service().Name())
+			}()
 
-			log.Infof("Executing pre-hooks for service %s ...", svc.Service().Name())
-			for _, h := range svc.Context().PreHooks() {
-				if h.Execute() != nil {
-					if !preHookErrorIgnore {
-						log.Errorf("pre-hook failed for service %s", svc.Service().Name())
+			preHookError := false
 
-						return
+			func() {
+				preHookErrorIgnore := svc.Context().IgnorePreRunHooksError()
+
+				log.Infof("Executing pre-hooks for service %s ...", svc.Service().Name())
+
+				for _, h := range svc.Context().PreHooks() {
+					log.Infof("executing pre-hook %s for service %s ...", h.Name(), svc.Service().Name())
+
+					hErr := h.Execute()
+					if hErr != nil {
+						preHookError = true
+
+						log.Errorf("pre-hook %s failed for service %s", h.Name(), svc.Service().Name())
+
+						if !preHookErrorIgnore {
+							return
+						}
 					}
 				}
+			}()
+
+			if preHookError && !svc.Context().IgnorePreRunHooksError() {
+				log.Errorf("pre-hooks failed for service %s. Not starting the service", svc.Service().Name())
+
+				return
 			}
 
 			log.Infof("starting service %s ...", svc.Service().Name())
 			svc.Service().Start(svc.Context())
 
-			log.Infof("Executing post-hooks for service %s ...", svc.Service().Name())
-			for _, h := range svc.Context().PostHooks() {
-				if h.Execute() != nil {
-					if !postHookErrorIgnore {
-						log.Errorf("post-hook failed for service %s", svc.Service().Name())
+			func() {
+				postHookErrorIgnore := svc.Context().IgnorePostRunHooksError()
 
-						return
+				log.Infof("Executing post-hooks for service %s ...", svc.Service().Name())
+
+				for _, h := range svc.Context().PostHooks() {
+					log.Infof("executing post-hook %s for service %s ...", h.Name(), svc.Service().Name())
+
+					hErr := h.Execute()
+					if hErr != nil {
+						log.Errorf("post-hook %s failed for service %s", h.Name(), svc.Service().Name())
+
+						if !postHookErrorIgnore {
+							return
+						}
 					}
 				}
-			}
+			}()
 		}(svc)
 	}
 
@@ -141,22 +169,26 @@ func (r *runner) BootUp(ctx context.Context) {
 
 // Wait waits for the runner to stop.
 func (r *runner) Wait() {
-	log.Info("waiting to catch shutdown signal ...")
+	log.Info("Waiting to catch shutdown signal...")
 
 	catchShutdownSignal()
 
-	log.Info("received shutdown signal ...")
+	log.Info("Received shutdown signal !!!")
 
 	r.Shutdown()
 
+	log.Infof("Waiting for %d service(s) to stop ...", len(r.svc))
+
 	r.wg.Wait()
+
+	log.Info("All services stopped. Exiting ...")
 
 	r.isRunning = false
 }
 
 // Shutdown shuts down the runner. This will stop all the registered services.
 func (r *runner) Shutdown() {
-	log.Info("shutting down Runner ...")
+	log.Info("Shutting down Runner...")
 
 	for _, svc := range r.svc {
 		close(svc.Context().TermCh())

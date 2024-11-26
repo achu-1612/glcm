@@ -1,14 +1,15 @@
 // pakcage hook allows user to define hooks which can be executed before or after the service is started.
 package hook
 
-import "github.com/achu-1612/glcm/log"
-
 // Handler is an interface which represents a single hook.
 // When a servcice is regsited in the runner, implementations of the Hndler interface can be registered too.
 // Based on the nature of the hook (pre-run or post-run), the hook will be executed.
 type Handler interface {
 	// Execute executes the hook method.
 	Execute() error
+
+	// Name returns the name of the hook.
+	Name() string
 }
 
 // handler implements the Handler interface.
@@ -29,11 +30,10 @@ func NewHandler(name string, f func(...interface{}) error, args ...interface{}) 
 
 // Execute executes the hook method.
 func (h *handler) Execute() error {
-	log.Infof("Executing hook: %s", h.name)
+	return h.f(h.args...)
+}
 
-	err := h.f(h.args...)
-
-	log.Infof("Excuted hook: %s", h.name)
-
-	return err
+// Name returns the name of the hook.
+func (h *handler) Name() string {
+	return h.name
 }
