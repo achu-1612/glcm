@@ -10,7 +10,7 @@ import (
 
 type serviceA struct{}
 
-func (s *serviceA) Start(ctx service.Context) {
+func (s *serviceA) Start(ctx *service.Context) {
 	for {
 		<-time.After(time.Second * 2)
 

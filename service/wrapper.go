@@ -5,7 +5,7 @@ import "sync"
 // Wrapper is a wrapper around the service and its context.
 type Wrapper struct {
 	s    Service
-	sCtx Context
+	sCtx *Context
 }
 
 // Service returns the service.
@@ -14,13 +14,13 @@ func (w *Wrapper) Service() Service {
 }
 
 // context returns the context.
-func (w *Wrapper) Context() Context {
+func (w *Wrapper) Context() *Context {
 	return w.sCtx
 }
 
 // NewWrapper returns a new instance of the wrapper.
 func NewWrapper(s Service, wg *sync.WaitGroup, opts ...Option) *Wrapper {
-	sCtx := &context{
+	sCtx := &Context{
 		terminationChan: make(chan struct{}),
 		wg:              wg,
 	}

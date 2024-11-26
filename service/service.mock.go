@@ -47,20 +47,8 @@ func (mr *MockServiceMockRecorder) Name() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Name", reflect.TypeOf((*MockService)(nil).Name))
 }
 
-// Restart mocks base method.
-func (m *MockService) Restart() {
-	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "Restart")
-}
-
-// Restart indicates an expected call of Restart.
-func (mr *MockServiceMockRecorder) Restart() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Restart", reflect.TypeOf((*MockService)(nil).Restart))
-}
-
 // Start mocks base method.
-func (m *MockService) Start(arg0 Context) {
+func (m *MockService) Start(arg0 *Context) {
 	m.ctrl.T.Helper()
 	m.ctrl.Call(m, "Start", arg0)
 }
@@ -83,16 +71,4 @@ func (m *MockService) Status() string {
 func (mr *MockServiceMockRecorder) Status() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Status", reflect.TypeOf((*MockService)(nil).Status))
-}
-
-// Stop mocks base method.
-func (m *MockService) Stop() {
-	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "Stop")
-}
-
-// Stop indicates an expected call of Stop.
-func (mr *MockServiceMockRecorder) Stop() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Stop", reflect.TypeOf((*MockService)(nil).Stop))
 }

@@ -6,7 +6,7 @@ import (
 
 func TestNewWrapper(t *testing.T) {
 	mockService := &MockService{}
-	option := func(ctx *context) {
+	option := func(ctx *Context) {
 		ctx.terminationChan = make(chan struct{})
 	}
 

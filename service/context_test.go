@@ -10,14 +10,14 @@ import (
 	If the functions don't have unique identities themselves we don't need to allocate memory for them.
 	Also, the compiler may choose to inline the function making the same function have more than one address
 	or no callable address at all. The spec prohibits function comparison to be able to optimize your code.
-	It's a good thing and you should embrace it. 
+	It's a good thing and you should embrace it.
 	But still comparing the pointers to the functions is a good way to check if the functions are the same.
 */
 
 func TestWithPreHooks(t *testing.T) {
 	hook1 := func() {}
 	hook2 := func() {}
-	opts := &context{}
+	opts := &Context{}
 	option := WithPreHooks(hook1, hook2)
 	option(opts)
 
@@ -37,7 +37,7 @@ func TestWithPreHooks(t *testing.T) {
 }
 
 func TestWithIgnorePreRunHooksError(t *testing.T) {
-	opts := &context{}
+	opts := &Context{}
 	option := WithIgnorePreRunHooksError(true)
 	option(opts)
 
@@ -49,7 +49,7 @@ func TestWithIgnorePreRunHooksError(t *testing.T) {
 func TestWithPostHooks(t *testing.T) {
 	hook1 := func() {}
 	hook2 := func() {}
-	opts := &context{}
+	opts := &Context{}
 	option := WithPostHooks(hook1, hook2)
 	option(opts)
 
@@ -69,7 +69,7 @@ func TestWithPostHooks(t *testing.T) {
 }
 
 func TestWithIgnorePostRunHooksError(t *testing.T) {
-	opts := &context{}
+	opts := &Context{}
 	option := WithIgnorePostRunHooksError(true)
 	option(opts)
 

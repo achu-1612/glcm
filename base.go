@@ -29,12 +29,6 @@ type Base interface {
 	Wait()
 }
 
-type serviceWrapper struct {
-	s         service.Service
-	preHooks  []func()
-	postHooks []func()
-}
-
 // NewRunner returns a new instance of the runner.
 func NewRunner() Base {
 	return &runner{
@@ -116,6 +110,7 @@ func (r *runner) BootUp(ctx context.Context) {
 	r.isRunning = true
 }
 
+// Wait waits for the runner to stop.
 func (r *runner) Wait() {
 	log.Info("waiting to catch shutdown signal ...")
 

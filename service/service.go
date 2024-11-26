@@ -12,7 +12,7 @@ type Service interface {
 	Name() string
 
 	// Start executes/boots-up/starts a service.
-	Start(Context)
+	Start(*Context)
 
 	// Status returns the status of the service.
 	Status() string
