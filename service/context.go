@@ -28,6 +28,9 @@ type Context struct {
 
 	// wg is the wait group created by the base runner.
 	wg *sync.WaitGroup
+
+	// running is a flag to indicate if the service is running or not.
+	running bool
 }
 
 // PreHooks returns the pre-hooks for the service.
@@ -56,6 +59,10 @@ func (c *Context) Done() {
 
 func (c *Context) TermCh() chan struct{} {
 	return c.terminationChan
+}
+
+func (c *Context) isRunning() bool {
+	return c.running
 }
 
 // Option defines a way to mutate the service configuration while registeration.

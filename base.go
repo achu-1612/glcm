@@ -32,6 +32,12 @@ type Base interface {
 	// Only a ShutDown() call will stop the runner.
 	// Even after all the registered services are stopped, runner would still be running.
 	Wait()
+
+	// restartService(...string) error
+	// restartAllServices() error
+
+	// stopService(...string) error
+	// stopAllServices() error
 }
 
 // NewRunner returns a new instance of the runner.
@@ -105,66 +111,9 @@ func (r *runner) BootUp(ctx context.Context) {
 
 	for _, svc := range r.svc {
 		// Adding the service to the wait group.
-		r.wg.Add(1)
+		// r.wg.Add(1)
 
-		go func(svc *service.Wrapper) {
-
-			defer func() {
-				svc.Context().Done() // indicate the worker group that the service has stopped.
-				log.Infof("service %s stopped", svc.Service().Name())
-			}()
-
-			preHookError := false
-
-			func() {
-				preHookErrorIgnore := svc.Context().IgnorePreRunHooksError()
-
-				log.Infof("Executing pre-hooks for service %s ...", svc.Service().Name())
-
-				for _, h := range svc.Context().PreHooks() {
-					log.Infof("executing pre-hook %s for service %s ...", h.Name(), svc.Service().Name())
-
-					hErr := h.Execute()
-					if hErr != nil {
-						preHookError = true
-
-						log.Errorf("pre-hook %s failed for service %s", h.Name(), svc.Service().Name())
-
-						if !preHookErrorIgnore {
-							return
-						}
-					}
-				}
-			}()
-
-			if preHookError && !svc.Context().IgnorePreRunHooksError() {
-				log.Errorf("pre-hooks failed for service %s. Not starting the service", svc.Service().Name())
-
-				return
-			}
-
-			log.Infof("starting service %s ...", svc.Service().Name())
-			svc.Service().Start(svc.Context())
-
-			func() {
-				postHookErrorIgnore := svc.Context().IgnorePostRunHooksError()
-
-				log.Infof("Executing post-hooks for service %s ...", svc.Service().Name())
-
-				for _, h := range svc.Context().PostHooks() {
-					log.Infof("executing post-hook %s for service %s ...", h.Name(), svc.Service().Name())
-
-					hErr := h.Execute()
-					if hErr != nil {
-						log.Errorf("post-hook %s failed for service %s", h.Name(), svc.Service().Name())
-
-						if !postHookErrorIgnore {
-							return
-						}
-					}
-				}
-			}()
-		}(svc)
+		go svc.Start()
 	}
 
 	r.isRunning = true
