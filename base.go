@@ -51,6 +51,7 @@ type runner struct {
 
 	// isRunning is a flag to indicate if the runner is running or not.
 	isRunning bool
+	ctx       context.Context
 }
 
 // IsRunning returns true if the runner is running, otherwise false.
@@ -78,18 +79,20 @@ func (r *runner) RegisterService(svc service.Service, opts ...service.Option) er
 
 // BootUp boots up the runner. This will start all the registered services.
 func (r *runner) BootUp(ctx context.Context) {
-	fig.NewColorFigure("GLCM", "isometric1", "green", true).Print()
-
-	if ctx == nil {
-		log.Warn("Base Context is empty. Using the background context.")
-
-		ctx = context.Background()
-	}
-
 	if r.isRunning {
 		log.Info("Runner is already running. Doing nothing.")
 
 		return
+	}
+
+	fig.NewColorFigure("GLCM", "isometric1", "green", true).Print()
+
+	r.ctx = ctx
+
+	if r.ctx == nil {
+		log.Warn("Base Context is empty. Using the background context.")
+
+		r.ctx = context.Background()
 	}
 
 	// Adding the base runner to the wait group.
@@ -171,7 +174,20 @@ func (r *runner) BootUp(ctx context.Context) {
 func (r *runner) Wait() {
 	log.Info("Waiting to catch shutdown signal...")
 
-	catchShutdownSignal()
+	quit := make(chan os.Signal, 1)
+
+	signal.Notify(quit,
+		syscall.SIGTERM, syscall.SIGINT,
+		syscall.SIGQUIT, syscall.SIGHUP)
+
+	func() {
+		select {
+		case <-quit:
+			return
+		case <-r.ctx.Done():
+			return
+		}
+	}()
 
 	log.Info("Received shutdown signal !!!")
 

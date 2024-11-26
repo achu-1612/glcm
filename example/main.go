@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log"
 	"time"
 
@@ -69,6 +70,7 @@ func main() {
 			hook.NewHandler("h4", postHook2, nil),
 		),
 	)
-	base.BootUp(nil)
+	ctx, _ := context.WithTimeout(context.Background(), time.Second*10)
+	base.BootUp(ctx)
 	base.Wait()
 }
