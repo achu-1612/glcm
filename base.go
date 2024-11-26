@@ -1,4 +1,4 @@
-package group
+package glcm
 
 import (
 	"context"
@@ -38,8 +38,9 @@ type serviceWrapper struct {
 // NewRunner returns a new instance of the runner.
 func NewRunner() Base {
 	return &runner{
-		wg: &sync.WaitGroup{},
-		mu: &sync.Mutex{},
+		svc: make(map[string]*service.Wrapper),
+		wg:  &sync.WaitGroup{},
+		mu:  &sync.Mutex{},
 	}
 }
 
@@ -47,7 +48,7 @@ func NewRunner() Base {
 type runner struct {
 	wg  *sync.WaitGroup
 	mu  *sync.Mutex
-	svc map[string]service.Wrapper
+	svc map[string]*service.Wrapper
 
 	// isRunning is a flag to indicate if the runner is running or not.
 	isRunning bool
@@ -71,7 +72,7 @@ func (r *runner) RegisterService(svc service.Service, opts ...service.Option) er
 		return ErrServiceAlreadyExists
 	}
 
-	r.svc[svc.Name()] = *service.NewWrapper(svc, opts...)
+	r.svc[svc.Name()] = service.NewWrapper(svc, r.wg, opts...)
 
 	return nil
 }
@@ -90,9 +91,28 @@ func (r *runner) BootUp(ctx context.Context) {
 		return
 	}
 
+	// Adding the base runner to the wait group.
+	// This is to keep the runner running even
+	// if all the services are stopped.
+	// if no service has been registered.
 	r.wg.Add(1)
 
 	log.Info("Booting up Runner ...")
+
+	for _, svc := range r.svc {
+
+		// Adding the service to the wait group.
+		r.wg.Add(1)
+
+		go func(svc *service.Wrapper) {
+			defer svc.Context().Done()
+			defer log.Infof("service %s stopped", svc.Service().Name())
+
+			log.Infof("starting service %s ...", svc.Service().Name())
+			svc.Service().Start(svc.Context())
+		}(svc)
+	}
+
 	r.isRunning = true
 }
 
@@ -100,6 +120,8 @@ func (r *runner) Wait() {
 	log.Info("waiting to catch shutdown signal ...")
 
 	catchShutdownSignal()
+
+	log.Info("received shutdown signal ...")
 
 	r.Shutdown()
 
@@ -111,6 +133,10 @@ func (r *runner) Wait() {
 // Shutdown shuts down the runner. This will stop all the registered services.
 func (r *runner) Shutdown() {
 	log.Info("shutting down Runner ...")
+
+	for _, svc := range r.svc {
+		close(svc.Context().TermCh())
+	}
 
 	r.wg.Done()
 }

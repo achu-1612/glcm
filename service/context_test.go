@@ -17,7 +17,7 @@ import (
 func TestWithPreHooks(t *testing.T) {
 	hook1 := func() {}
 	hook2 := func() {}
-	opts := &Context{}
+	opts := &context{}
 	option := WithPreHooks(hook1, hook2)
 	option(opts)
 
@@ -37,7 +37,7 @@ func TestWithPreHooks(t *testing.T) {
 }
 
 func TestWithIgnorePreRunHooksError(t *testing.T) {
-	opts := &Context{}
+	opts := &context{}
 	option := WithIgnorePreRunHooksError(true)
 	option(opts)
 
@@ -49,7 +49,7 @@ func TestWithIgnorePreRunHooksError(t *testing.T) {
 func TestWithPostHooks(t *testing.T) {
 	hook1 := func() {}
 	hook2 := func() {}
-	opts := &Context{}
+	opts := &context{}
 	option := WithPostHooks(hook1, hook2)
 	option(opts)
 
@@ -69,7 +69,7 @@ func TestWithPostHooks(t *testing.T) {
 }
 
 func TestWithIgnorePostRunHooksError(t *testing.T) {
-	opts := &Context{}
+	opts := &context{}
 	option := WithIgnorePostRunHooksError(true)
 	option(opts)
 

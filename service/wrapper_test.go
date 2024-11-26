@@ -6,11 +6,11 @@ import (
 
 func TestNewWrapper(t *testing.T) {
 	mockService := &MockService{}
-	option := func(ctx *Context) {
+	option := func(ctx *context) {
 		ctx.terminationChan = make(chan struct{})
 	}
 
-	wrapper := NewWrapper(mockService, option)
+	wrapper := NewWrapper(mockService, nil, option)
 
 	if wrapper.Service() != mockService {
 		t.Errorf("expected service %v, got %v", mockService, wrapper.Service())
@@ -20,7 +20,7 @@ func TestNewWrapper(t *testing.T) {
 		t.Error("expected context to be non-nil")
 	}
 
-	if wrapper.Context().terminationChan == nil {
+	if wrapper.Context().TermCh() == nil {
 		t.Error("expected terminationChan to be non-nil")
 	}
 }

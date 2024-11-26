@@ -60,15 +60,15 @@ func (mr *MockServiceMockRecorder) Restart() *gomock.Call {
 }
 
 // Start mocks base method.
-func (m *MockService) Start() {
+func (m *MockService) Start(arg0 Context) {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "Start")
+	m.ctrl.Call(m, "Start", arg0)
 }
 
 // Start indicates an expected call of Start.
-func (mr *MockServiceMockRecorder) Start() *gomock.Call {
+func (mr *MockServiceMockRecorder) Start(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Start", reflect.TypeOf((*MockService)(nil).Start))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Start", reflect.TypeOf((*MockService)(nil).Start), arg0)
 }
 
 // Status mocks base method.
