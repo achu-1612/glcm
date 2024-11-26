@@ -1,17 +1,21 @@
 package service
 
-import "sync"
+import (
+	"sync"
+
+	"github.com/achu-1612/glcm/hook"
+)
 
 // context holds all the lifecycle objects for the service.
 type Context struct {
 	// PreHooks are the hooks that will be executed before starting the service.
-	preHooks []func()
+	preHooks []hook.Handler
 
 	// IgnorePreRunHooksError is a flag to indicate if the pre-run hooks error should be ignored or not.
 	ignorePreRunHooksError bool
 
 	// PostHooks are the hooks that will be executed after stopping the service.
-	postHooks []func()
+	postHooks []hook.Handler
 
 	// IgnorePostRunHooksError is a flag to indicate if the post-run hooks error should be ignored or not.
 	ignorePostRunHooksError bool
@@ -27,7 +31,7 @@ type Context struct {
 }
 
 // PreHooks returns the pre-hooks for the service.
-func (c *Context) PreHooks() []func() {
+func (c *Context) PreHooks() []hook.Handler {
 	return c.preHooks
 }
 
@@ -37,7 +41,7 @@ func (c *Context) IgnorePreRunHooksError() bool {
 }
 
 // PostHooks returns the post-hooks for the service.
-func (c *Context) PostHooks() []func() {
+func (c *Context) PostHooks() []hook.Handler {
 	return c.postHooks
 }
 
@@ -58,7 +62,7 @@ func (c *Context) TermCh() chan struct{} {
 type Option func(opts *Context)
 
 // WithPreHooks sets the pre-hooks for the service.
-func WithPreHooks(hooks ...func()) Option {
+func WithPreHooks(hooks ...hook.Handler) Option {
 	return func(opts *Context) {
 		opts.preHooks = hooks
 	}
@@ -72,7 +76,7 @@ func WithIgnorePreRunHooksError(ignore bool) Option {
 }
 
 // WithPostHooks sets the post-hooks for the service.
-func WithPostHooks(hooks ...func()) Option {
+func WithPostHooks(hooks ...hook.Handler) Option {
 	return func(opts *Context) {
 		opts.postHooks = hooks
 	}

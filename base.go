@@ -9,6 +9,8 @@ import (
 
 	"github.com/achu-1612/glcm/log"
 	"github.com/achu-1612/glcm/service"
+
+	fig "github.com/common-nighthawk/go-figure"
 )
 
 type Base interface {
@@ -73,6 +75,8 @@ func (r *runner) RegisterService(svc service.Service, opts ...service.Option) er
 
 // BootUp boots up the runner. This will start all the registered services.
 func (r *runner) BootUp(ctx context.Context) {
+	fig.NewColorFigure("GLCM", "isometric1", "green", true).Print()
+
 	if ctx == nil {
 		log.Warn("context is nil. Using the background context.")
 
@@ -102,8 +106,33 @@ func (r *runner) BootUp(ctx context.Context) {
 			defer svc.Context().Done()
 			defer log.Infof("service %s stopped", svc.Service().Name())
 
+			preHookErrorIgnore := svc.Context().IgnorePreRunHooksError()
+			postHookErrorIgnore := svc.Context().IgnorePostRunHooksError()
+
+			log.Infof("Executing pre-hooks for service %s ...", svc.Service().Name())
+			for _, h := range svc.Context().PreHooks() {
+				if h.Execute() != nil {
+					if !preHookErrorIgnore {
+						log.Errorf("pre-hook failed for service %s", svc.Service().Name())
+
+						return
+					}
+				}
+			}
+
 			log.Infof("starting service %s ...", svc.Service().Name())
 			svc.Service().Start(svc.Context())
+
+			log.Infof("Executing post-hooks for service %s ...", svc.Service().Name())
+			for _, h := range svc.Context().PostHooks() {
+				if h.Execute() != nil {
+					if !postHookErrorIgnore {
+						log.Errorf("post-hook failed for service %s", svc.Service().Name())
+
+						return
+					}
+				}
+			}
 		}(svc)
 	}
 

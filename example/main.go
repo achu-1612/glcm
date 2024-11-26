@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/achu-1612/glcm"
+	"github.com/achu-1612/glcm/hook"
 	"github.com/achu-1612/glcm/service"
 )
 
@@ -31,9 +32,43 @@ func (s *serviceA) Name() string {
 	return "serviceA"
 }
 
+func preHook1(args ...interface{}) error {
+	log.Println("pre-hook 1")
+
+	return nil
+}
+
+func preHook2(args ...interface{}) error {
+	log.Println("pre-hook 2")
+
+	return nil
+}
+
+func postHook1(args ...interface{}) error {
+	log.Println("post-hook 1")
+
+	return nil
+}
+
+func postHook2(args ...interface{}) error {
+	log.Println("post-hook 2")
+
+	return nil
+}
+
 func main() {
 	base := glcm.NewRunner()
-	base.RegisterService(&serviceA{})
+	base.RegisterService(
+		&serviceA{},
+		service.WithPreHooks(
+			hook.NewHandler("h1", preHook1, nil),
+			hook.NewHandler("h2", preHook2, nil),
+		),
+		service.WithPostHooks(
+			hook.NewHandler("h3", postHook1, nil),
+			hook.NewHandler("h4", postHook2, nil),
+		),
+	)
 	base.BootUp(nil)
 	base.Wait()
 }
