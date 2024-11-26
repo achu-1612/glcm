@@ -38,6 +38,7 @@ func (w *Wrapper) Start() {
 		log.Infof("service %s stopped", w.Service().Name())
 	}()
 
+	// call the pre exec hooks
 	func() {
 		preHookErrorIgnore := w.Context().IgnorePreRunHooksError()
 
@@ -65,9 +66,13 @@ func (w *Wrapper) Start() {
 		return
 	}
 
+	// start the service
 	log.Infof("starting service %s ...", w.Service().Name())
 	w.Service().Start(w.Context())
 
+	// call the post exec hooks.
+	// Note: we don't really need the ignore flag here,,
+	// as there is nothing for us to do, if the post hooks fail.
 	func() {
 		postHookErrorIgnore := w.Context().IgnorePostRunHooksError()
 
@@ -107,3 +112,45 @@ func NewWrapper(s Service, wg *sync.WaitGroup, opts ...Option) *Wrapper {
 		sCtx: sCtx,
 	}
 }
+
+/*
+
+Have a primary wait group for the base runner.
+This will make sure the base runner is always running even if the
+services are stopped.
+Have a second wait group for the services.
+
+This will help to wait for the services to end the execution,
+when we call the stop all services.
+
+each service we will have a channel, which will be closed when the service is done,
+This will help us to wait for one services to end.
+
+When the service will call done,
+two things we will do:
+1. close the channel
+2. call the done on the wait group.
+
+When the service is started, we will add the service to the wait group.
+
+
+NO need to have a context as separate struct,
+Just pull everything to the wrapper.
+
+Have start stop and restart methods on the wrapper to handle things easily outside thw pkg.const
+wrapper will consider all the cases like, if the service is already running,
+olr stopped when we call the start methods, or stop all, or start all, etc.
+
+Calling stop on the wrapper will wait on the channel whcih will idncate the at,
+the service is done,
+it wil be useful when we need to start a service right after we call a stop.const
+Basically restart.
+
+
+no need to track errors for the post hooks executions
+if the post hook fails, we can log it and move on.
+
+wraper will take care of the pre hooks and post hooks execution. already implemented.
+
+
+*/

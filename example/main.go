@@ -70,7 +70,8 @@ func main() {
 			hook.NewHandler("h4", postHook2, nil),
 		),
 	)
-	ctx, _ := context.WithTimeout(context.Background(), time.Second*10)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	defer cancel()
 	base.BootUp(ctx)
 	base.Wait()
 }
