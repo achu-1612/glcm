@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"log"
 	"time"
 
@@ -70,8 +69,13 @@ func main() {
 			hook.NewHandler("h4", postHook2, nil),
 		),
 	)
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
-	defer cancel()
-	base.BootUp(ctx)
+
+	base.BootUp(nil)
+
+	go func() {
+		<-time.After(time.Second * 10)
+		base.RestartAllServices()
+	}()
+
 	base.Wait()
 }

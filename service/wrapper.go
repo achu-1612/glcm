@@ -85,6 +85,11 @@ func (w *Wrapper) Start() {
 		return
 	}
 
+	// we don't know if this is the first time the service is getting started.
+	// So, we need to reallocate the channels.
+	w.dic = make(chan struct{})
+	w.tc = make(chan struct{})
+
 	w.wg.Add(1)
 	defer func() {
 		w.done() // indicate the worker group that the service has stopped.
@@ -127,7 +132,6 @@ func (w *Wrapper) Start() {
 			}
 		}
 	}()
-
 }
 
 func (w *Wrapper) Stop() {
@@ -138,6 +142,7 @@ func (w *Wrapper) Stop() {
 	}
 
 	log.Infof("Stopping service %s ...", w.s.Name())
+	w.isRunning = false
 
 	close(w.tc)
 }
@@ -145,6 +150,6 @@ func (w *Wrapper) Stop() {
 func (w *Wrapper) StopAndWait() {
 	w.Stop()
 
-	log.Infof("Waiting for the service %s to exti ...", w.s.Name())
+	log.Infof("Waiting for the service %s to exit ...", w.s.Name())
 	w.wait()
 }
