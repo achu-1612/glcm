@@ -34,7 +34,7 @@ type Base interface {
 	Wait()
 
 	// restartService(...string) error
-	// restartAllServices() error
+	RestartAllServices()
 
 	// stopService(...string) error
 	// stopAllServices() error
@@ -163,13 +163,15 @@ func (r *runner) Shutdown() {
 	r.wg.Done()
 }
 
-// catchShutdownSignal - catch a shutdown signal.
-func catchShutdownSignal() {
-	quit := make(chan os.Signal, 1)
+func (r *runner) RestartAllServices() {
+	for _, svc := range r.svc {
+		svc.Stop()
+	}
 
-	signal.Notify(quit,
-		syscall.SIGTERM, syscall.SIGINT,
-		syscall.SIGQUIT, syscall.SIGHUP)
+	// Wait for all the services to stop.
+	r.swg.Wait()
 
-	<-quit
+	for _, svc := range r.svc {
+		go svc.Start()
+	}
 }
