@@ -77,5 +77,15 @@ func main() {
 		base.RestartAllServices()
 	}()
 
+	go func() {
+		<-time.After(time.Second * 20)
+		base.RestartAllServices()
+	}()
+
+	go func() {
+		<-time.After(time.Second * 30)
+		base.StopAllServices()
+	}()
+
 	base.Wait()
 }

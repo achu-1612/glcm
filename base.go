@@ -37,7 +37,7 @@ type Base interface {
 	RestartAllServices()
 
 	// stopService(...string) error
-	// stopAllServices() error
+	StopAllServices()
 }
 
 // NewRunner returns a new instance of the runner.
@@ -174,4 +174,12 @@ func (r *runner) RestartAllServices() {
 	for _, svc := range r.svc {
 		go svc.Start()
 	}
+}
+
+func (r *runner) StopAllServices() {
+	for _, svc := range r.svc {
+		svc.Stop()
+	}
+
+	r.swg.Wait()
 }
