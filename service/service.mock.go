@@ -48,7 +48,7 @@ func (mr *MockServiceMockRecorder) Name() *gomock.Call {
 }
 
 // Start mocks base method.
-func (m *MockService) Start(arg0 *Context) {
+func (m *MockService) Start(arg0 Terminator) {
 	m.ctrl.T.Helper()
 	m.ctrl.Call(m, "Start", arg0)
 }
