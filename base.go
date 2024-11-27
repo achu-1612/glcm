@@ -46,13 +46,17 @@ func NewRunner() Base {
 		svc: make(map[string]*service.Wrapper),
 		wg:  &sync.WaitGroup{},
 		mu:  &sync.Mutex{},
+		swg: &sync.WaitGroup{},
 	}
 }
 
 // runner implements the Base interface.
 type runner struct {
 	wg  *sync.WaitGroup
-	mu  *sync.Mutex
+	swg *sync.WaitGroup
+
+	mu *sync.Mutex
+
 	svc map[string]*service.Wrapper
 
 	// isRunning is a flag to indicate if the runner is running or not.
@@ -78,7 +82,7 @@ func (r *runner) RegisterService(svc service.Service, opts ...service.Option) er
 		return ErrServiceAlreadyExists
 	}
 
-	r.svc[svc.Name()] = service.NewWrapper(svc, r.wg, opts...)
+	r.svc[svc.Name()] = service.NewWrapper(svc, r.swg, opts...)
 
 	return nil
 }
@@ -110,9 +114,6 @@ func (r *runner) BootUp(ctx context.Context) {
 	log.Info("Booting up Base Runner ...")
 
 	for _, svc := range r.svc {
-		// Adding the service to the wait group.
-		// r.wg.Add(1)
-
 		go svc.Start()
 	}
 
@@ -144,7 +145,7 @@ func (r *runner) Wait() {
 
 	log.Infof("Waiting for %d service(s) to stop ...", len(r.svc))
 
-	r.wg.Wait()
+	r.swg.Wait()
 
 	log.Info("All services stopped. Exiting ...")
 
@@ -156,7 +157,7 @@ func (r *runner) Shutdown() {
 	log.Info("Shutting down Runner...")
 
 	for _, svc := range r.svc {
-		close(svc.Context().TermCh())
+		svc.Stop()
 	}
 
 	r.wg.Done()
