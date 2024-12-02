@@ -20,6 +20,7 @@ func init() {
 	std.SetFormatter(&log.TextFormatter{
 		DisableColors: false,
 		FullTimestamp: false,
+		ForceColors:   true,
 	})
 }
 

@@ -33,10 +33,10 @@ type Base interface {
 	// Even after all the registered services are stopped, runner would still be running.
 	Wait()
 
-	// restartService(...string) error
+	RestartService(...string) error
 	RestartAllServices()
 
-	// stopService(...string) error
+	StopService(...string) error
 	StopAllServices()
 }
 
@@ -182,4 +182,12 @@ func (r *runner) StopAllServices() {
 	}
 
 	r.swg.Wait()
+}
+
+func (r *runner) RestartService(name ...string) error {
+	return nil
+}
+
+func (r *runner) StopService(name ...string) error {
+	return nil
 }
