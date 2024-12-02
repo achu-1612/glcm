@@ -72,19 +72,24 @@ func main() {
 
 	base.BootUp(nil)
 
-	go func() {
-		<-time.After(time.Second * 10)
-		base.RestartAllServices()
-	}()
+	// go func() {
+	// 	<-time.After(time.Second * 10)
+	// 	base.RestartAllServices()
+	// }()
+
+	// go func() {
+	// 	<-time.After(time.Second * 20)
+	// 	base.RestartAllServices()
+	// }()
+
+	// go func() {
+	// 	<-time.After(time.Second * 30)
+	// 	base.StopAllServices()
+	// }()
 
 	go func() {
-		<-time.After(time.Second * 20)
-		base.RestartAllServices()
-	}()
-
-	go func() {
-		<-time.After(time.Second * 30)
-		base.StopAllServices()
+		<-time.After(time.Second * 5)
+		base.RestartService("serviceA")
 	}()
 
 	base.Wait()

@@ -47,11 +47,10 @@ type Wrapper struct {
 // NewWrapper returns a new instance of the wrapper.
 func NewWrapper(s Service, wg *sync.WaitGroup, opts ...Option) *Wrapper {
 	w := &Wrapper{
-		s:   s,
-		dic: make(chan struct{}),
-		tc:  make(chan struct{}),
-		wg:  wg,
+		s:  s,
+		wg: wg,
 	}
+
 	for _, opt := range opts {
 		opt(w)
 	}
@@ -62,6 +61,7 @@ func NewWrapper(s Service, wg *sync.WaitGroup, opts ...Option) *Wrapper {
 // Done marks the services as done in the workergroup and clsoes the indication channel.
 func (w *Wrapper) done() {
 	w.wg.Done()
+
 	close(w.dic)
 }
 
@@ -70,7 +70,7 @@ func (w *Wrapper) wait() {
 	<-w.dic
 }
 
-// TermCh retusn the termination channel for the service.
+// TermCh returns the termination channel for the service.
 // The service implmentation is expected to listen to this channel and
 // stop the service when it is closed.
 func (w *Wrapper) TermCh() chan struct{} {
@@ -134,22 +134,38 @@ func (w *Wrapper) Start() {
 	}()
 }
 
-func (w *Wrapper) Stop() {
+// stop stops the service. It acts like a wrapper around the service's stop method.
+// to be consumed by Stop() and StopAndWait() methods.
+func (w *Wrapper) stop() error {
 	if !w.isRunning {
-		log.Infof("Service %s is already stopped", w.s.Name())
+		return ErrServiceNotRunning
+	}
+
+	log.Infof("Stopping service %s ...", w.s.Name())
+
+	close(w.tc)
+
+	w.isRunning = false
+
+	return nil
+}
+
+// Stop stops the service.
+func (w *Wrapper) Stop() {
+	if err := w.stop(); err != nil {
+		log.Errorf("Failed to stop service %s: %v", w.s.Name(), err)
+	}
+}
+
+// StopAndWait stops the service and waits for it to exit.
+func (w *Wrapper) StopAndWait() {
+	if err := w.stop(); err != nil {
+		log.Errorf("Failed to stop service %s: %v", w.s.Name(), err)
 
 		return
 	}
 
-	log.Infof("Stopping service %s ...", w.s.Name())
-	w.isRunning = false
-
-	close(w.tc)
-}
-
-func (w *Wrapper) StopAndWait() {
-	w.Stop()
-
 	log.Infof("Waiting for the service %s to exit ...", w.s.Name())
+
 	w.wait()
 }
