@@ -148,8 +148,15 @@ func (w *Wrapper) Stop() {
 }
 
 func (w *Wrapper) StopAndWait() {
+	if !w.isRunning {
+		log.Infof("Service %s is already stopped", w.s.Name())
+
+		return
+	}
+
 	w.Stop()
 
 	log.Infof("Waiting for the service %s to exit ...", w.s.Name())
+
 	w.wait()
 }

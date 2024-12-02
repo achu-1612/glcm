@@ -156,6 +156,9 @@ func (r *runner) Wait() {
 func (r *runner) Shutdown() {
 	log.Info("Shutting down Runner...")
 
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
 	for _, svc := range r.svc {
 		svc.Stop()
 	}
@@ -164,6 +167,9 @@ func (r *runner) Shutdown() {
 }
 
 func (r *runner) RestartAllServices() {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
 	for _, svc := range r.svc {
 		svc.Stop()
 	}
@@ -177,6 +183,9 @@ func (r *runner) RestartAllServices() {
 }
 
 func (r *runner) StopAllServices() {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
 	for _, svc := range r.svc {
 		svc.Stop()
 	}
@@ -185,9 +194,28 @@ func (r *runner) StopAllServices() {
 }
 
 func (r *runner) RestartService(name ...string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	for _, n := range name {
+		if svc, ok := r.svc[n]; ok {
+			svc.StopAndWait()
+			go svc.Start()
+		}
+	}
+
 	return nil
 }
 
 func (r *runner) StopService(name ...string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	for _, n := range name {
+		if svc, ok := r.svc[n]; ok {
+			svc.Stop()
+		}
+	}
+
 	return nil
 }
