@@ -17,10 +17,10 @@ type Terminator interface {
 type Wrapper struct {
 	s Service
 
-	// PreHooks are the hooks that will be executed before starting the service.
+	// preHooks are the hooks that will be executed before starting the service.
 	preHooks []hook.Handler
 
-	// PostHooks are the hooks that will be executed after stopping the service.
+	// postHooks are the hooks that will be executed after stopping the service.
 	postHooks []hook.Handler
 
 	// tc (termination channel) is a channel which will be used to direct the service to stop.
@@ -132,6 +132,8 @@ func (w *Wrapper) Start() {
 			}
 		}
 	}()
+
+	w.isRunning = false
 }
 
 // stop stops the service. It acts like a wrapper around the service's stop method.
@@ -153,14 +155,14 @@ func (w *Wrapper) stop() error {
 // Stop stops the service.
 func (w *Wrapper) Stop() {
 	if err := w.stop(); err != nil {
-		log.Errorf("Failed to stop service %s: %v", w.s.Name(), err)
+		log.Warnf("Failed to stop service %s: %v", w.s.Name(), err)
 	}
 }
 
 // StopAndWait stops the service and waits for it to exit.
 func (w *Wrapper) StopAndWait() {
 	if err := w.stop(); err != nil {
-		log.Errorf("Failed to stop service %s: %v", w.s.Name(), err)
+		log.Warnf("Failed to stop service %s: %v", w.s.Name(), err)
 
 		return
 	}

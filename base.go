@@ -15,7 +15,7 @@ import (
 
 // Base is the blueprint for the runner.
 type Base interface {
-	// BottUp boots up the runner. This will start all the registered services.
+	// BootUp boots up the runner. This will start all the registered services.
 	BootUp(context.Context)
 
 	// Shutdown shuts down the runner. This will stop all the registered services.
@@ -33,10 +33,16 @@ type Base interface {
 	// Even after all the registered services are stopped, runner would still be running.
 	Wait()
 
+	// RestartService restarts the given list of services.
 	RestartService(...string) error
+
+	// RestartAllServices restarts all the registered/running services.
 	RestartAllServices()
 
+	// StopService stops the given list of services.
 	StopService(...string) error
+
+	// StopAllServices stops all the registered/running services.
 	StopAllServices()
 }
 
@@ -44,7 +50,6 @@ type Base interface {
 func NewRunner() Base {
 	return &runner{
 		svc: make(map[string]*service.Wrapper),
-		wg:  &sync.WaitGroup{},
 		mu:  &sync.Mutex{},
 		swg: &sync.WaitGroup{},
 	}
@@ -52,11 +57,8 @@ func NewRunner() Base {
 
 // runner implements the Base interface.
 type runner struct {
-	wg  *sync.WaitGroup
 	swg *sync.WaitGroup
-
-	mu *sync.Mutex
-
+	mu  *sync.Mutex
 	svc map[string]*service.Wrapper
 
 	// isRunning is a flag to indicate if the runner is running or not.
@@ -66,12 +68,15 @@ type runner struct {
 
 // IsRunning returns true if the runner is running, otherwise false.
 func (r *runner) IsRunning() bool {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
 	return r.isRunning
 }
 
 // RegisterService registers a service with the runner.
 func (r *runner) RegisterService(svc service.Service, opts ...service.Option) error {
-	if r.isRunning {
+	if r.IsRunning() {
 		return ErrRunnerAlreadyRunning
 	}
 
@@ -89,8 +94,8 @@ func (r *runner) RegisterService(svc service.Service, opts ...service.Option) er
 
 // BootUp boots up the runner. This will start all the registered services.
 func (r *runner) BootUp(ctx context.Context) {
-	if r.isRunning {
-		log.Info("Runner is already running. Doing nothing.")
+	if r.IsRunning() {
+		log.Info("Runner is already running. Nothing to do.")
 
 		return
 	}
@@ -104,12 +109,6 @@ func (r *runner) BootUp(ctx context.Context) {
 
 		r.ctx = context.Background()
 	}
-
-	// Adding the base runner to the wait group.
-	// This is to keep the runner running even
-	// if all the services are stopped.
-	// if no service has been registered.
-	r.wg.Add(1)
 
 	log.Info("Booting up Base Runner ...")
 
@@ -162,20 +161,13 @@ func (r *runner) Shutdown() {
 	for _, svc := range r.svc {
 		svc.Stop()
 	}
-
-	r.wg.Done()
 }
 
 func (r *runner) RestartAllServices() {
+	r.StopAllServices()
+
 	r.mu.Lock()
 	defer r.mu.Unlock()
-
-	for _, svc := range r.svc {
-		svc.Stop()
-	}
-
-	// Wait for all the services to stop.
-	r.swg.Wait()
 
 	for _, svc := range r.svc {
 		go svc.Start()
@@ -194,12 +186,13 @@ func (r *runner) StopAllServices() {
 }
 
 func (r *runner) RestartService(name ...string) error {
+	r.StopService(name...)
+
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
 	for _, n := range name {
 		if svc, ok := r.svc[n]; ok {
-			svc.StopAndWait()
 			go svc.Start()
 		}
 	}
@@ -213,7 +206,7 @@ func (r *runner) StopService(name ...string) error {
 
 	for _, n := range name {
 		if svc, ok := r.svc[n]; ok {
-			svc.Stop()
+			svc.StopAndWait()
 		}
 	}
 
