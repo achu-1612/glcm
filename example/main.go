@@ -57,7 +57,7 @@ func postHook2(args ...interface{}) error {
 }
 
 func main() {
-	base := glcm.New()
+	base := glcm.NewRunner()
 	base.RegisterService(
 		&serviceA{},
 		service.WithPreHooks(
