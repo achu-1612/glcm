@@ -1,4 +1,4 @@
-package glcm
+package runner
 
 import "errors"
 

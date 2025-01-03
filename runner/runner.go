@@ -1,4 +1,4 @@
-package glcm
+package runner
 
 import (
 	"context"
@@ -12,39 +12,6 @@ import (
 
 	fig "github.com/common-nighthawk/go-figure"
 )
-
-// Base is the blueprint for the runner.
-type Base interface {
-	// BootUp boots up the runner. This will start all the registered services.
-	BootUp(context.Context)
-
-	// Shutdown shuts down the runner. This will stop all the registered services.
-	Shutdown()
-
-	// RegisterService registers a service with the runner.
-	RegisterService(service.Service, ...service.Option) error
-
-	// IsRunning returns true if the runner is running, otherwise false.
-	IsRunning() bool
-
-	// Wait waits for the runner to stop.
-	// Note: This is a blocking call. It is to be called after BootUp.
-	// Only a ShutDown() call will stop the runner.
-	// Even after all the registered services are stopped, runner would still be running.
-	Wait()
-
-	// RestartService restarts the given list of services.
-	RestartService(...string) error
-
-	// RestartAllServices restarts all the registered/running services.
-	RestartAllServices()
-
-	// StopService stops the given list of services.
-	StopService(...string) error
-
-	// StopAllServices stops all the registered/running services.
-	StopAllServices()
-}
 
 // NewRunner returns a new instance of the runner.
 func NewRunner() Base {
@@ -161,6 +128,8 @@ func (r *runner) Shutdown() {
 	for _, svc := range r.svc {
 		svc.Stop()
 	}
+
+	r.isRunning = false
 }
 
 func (r *runner) RestartAllServices() {
