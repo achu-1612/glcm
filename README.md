@@ -9,4 +9,3 @@ TODO:
 - unified way for stop and stopWait for service wrapper
 - auto restart config for services
 - exponential back-off restart for restart of service
-- ?
