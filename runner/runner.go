@@ -174,7 +174,9 @@ func (r *runner) StopAllServices() {
 }
 
 func (r *runner) RestartService(name ...string) error {
-	r.StopService(name...)
+	if err := r.StopService(name...); err != nil {
+		return err
+	}
 
 	r.mu.Lock()
 	defer r.mu.Unlock()

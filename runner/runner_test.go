@@ -1,6 +1,7 @@
 package runner
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -13,7 +14,7 @@ func TestIsRunning(t *testing.T) {
 	assert.False(t, r.IsRunning(), "Expected runner to not be running")
 
 	// Start the runner
-	r.BootUp(nil)
+	r.BootUp(context.TODO())
 
 	// Test when runner is running
 	assert.True(t, r.IsRunning(), "Expected runner to be running")
