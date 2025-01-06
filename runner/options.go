@@ -11,10 +11,10 @@ func WithHideBanner(hideBanner bool) Options {
 	}
 }
 
-// WithSupressLog sets the supress log flag for the runner.
-func WithSupressLog(supressLog bool) Options {
+// WithSuppressLog sets the suppress log flag for the runner.
+func WithSuppressLog(suppressLog bool) Options {
 	return func(opts *runner) {
-		opts.supressLog = supressLog
+		opts.suppressLog = suppressLog
 	}
 }
 
@@ -24,4 +24,3 @@ func WithContext(ctx context.Context) Options {
 		opts.ctx = ctx
 	}
 }
-

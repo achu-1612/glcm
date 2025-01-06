@@ -26,7 +26,7 @@ func NewRunner(opts ...Options) Base {
 		opt(r)
 	}
 
-	if r.supressLog {
+	if r.suppressLog {
 		log.SetOutput(io.Discard)
 	}
 
@@ -46,8 +46,8 @@ type runner struct {
 	// hideBanner is a flag to indicate if the banner should be hidden or not.
 	hideBanner bool
 
-	// supressLog is a flag to indicate if the logs should be supressed or not.
-	supressLog bool
+	// suppressLog is a flag to indicate if the logs should be suppressed or not.
+	suppressLog bool
 }
 
 // IsRunning returns true if the runner is running, otherwise false.

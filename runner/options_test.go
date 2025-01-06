@@ -26,23 +26,23 @@ func TestHideBanner(t *testing.T) {
 	assert.Equal(t, false, r.hideBanner, "Expected hideBanner to be set to false")
 }
 
-func TestSupressLog(t *testing.T) {
+func TestSuppressLog(t *testing.T) {
 	// Create a runner instance
 	r := &runner{}
 
-	// Apply the WithSupressLog option with true
-	option := WithSupressLog(true)
+	// Apply the WithSuppressLog option with true
+	option := WithSuppressLog(true)
 	option(r)
 
-	// Assert that the supressLog field is set correctly
-	assert.Equal(t, true, r.supressLog, "Expected supressLog to be set to true")
+	// Assert that the suppressLog field is set correctly
+	assert.Equal(t, true, r.suppressLog, "Expected suppressLog to be set to true")
 
-	// Apply the WithSupressLog option with false
-	option = WithSupressLog(false)
+	// Apply the WithSuppressLog option with false
+	option = WithSuppressLog(false)
 	option(r)
 
-	// Assert that the supressLog field is set correctly
-	assert.Equal(t, false, r.supressLog, "Expected supressLog to be set to false")
+	// Assert that the suppressLog field is set correctly
+	assert.Equal(t, false, r.suppressLog, "Expected suppressLog to be set to false")
 }
 
 func TestContext(t *testing.T) {

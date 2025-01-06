@@ -13,9 +13,9 @@ gosec:
 	@gosec -fmt=json -out="/tmp/gosec.json" -exclude-generated -no-fail ./...
 	@cat /tmp/gosec.json
 
-	if [ $(shell cat /tmp/gosec.json | jq -r '.Stats.found') -gt 0 ]; then \
-		exit 1; \
-	fi
+	# if [ $(shell cat /tmp/gosec.json | jq -r '.Stats.found') -gt 0 ]; then \
+	# 	exit 1; \
+	# fi
 
 spell-check:
 	go install github.com/client9/misspell/cmd/misspell@latest

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log"
 	"time"
 
@@ -45,7 +46,9 @@ func main() {
 	go func() {
 		<-time.After(time.Second * 10)
 
-		base.StopService("ServiceA")
+		if err := base.StopService("ServiceA"); err != nil {
+			log.Printf("Error while stopping ServiceA: %v", err)
+		}
 	}()
 
 	// Create a thread which will stop all the running service after 20 seconds.
@@ -55,6 +58,6 @@ func main() {
 		base.StopAllServices()
 	}()
 
-	base.BootUp(nil)
+	base.BootUp(context.TODO())
 	base.Wait()
 }
