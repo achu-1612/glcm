@@ -6,6 +6,7 @@ import (
 
 	"github.com/achu-1612/glcm"
 	"github.com/achu-1612/glcm/hook"
+	"github.com/achu-1612/glcm/runner"
 	"github.com/achu-1612/glcm/service"
 )
 
@@ -57,7 +58,10 @@ func postHook2(args ...interface{}) error {
 }
 
 func main() {
-	base := glcm.NewRunner()
+	base := glcm.NewRunner(
+		runner.WithHideBanner(true),
+		runner.WithSupressLog(true),
+	)
 	base.RegisterService(
 		&serviceA{},
 		service.WithPreHooks(

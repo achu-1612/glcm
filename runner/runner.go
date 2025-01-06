@@ -2,6 +2,7 @@ package runner
 
 import (
 	"context"
+	"io"
 	"os"
 	"os/signal"
 	"sync"
@@ -14,12 +15,22 @@ import (
 )
 
 // NewRunner returns a new instance of the runner.
-func NewRunner() Base {
-	return &runner{
+func NewRunner(opts ...Options) Base {
+	r := &runner{
 		svc: make(map[string]*service.Wrapper),
 		mu:  &sync.Mutex{},
 		swg: &sync.WaitGroup{},
 	}
+
+	for _, opt := range opts {
+		opt(r)
+	}
+
+	if r.supressLog {
+		log.SetOutput(io.Discard)
+	}
+
+	return r
 }
 
 // runner implements the Base interface.
@@ -31,6 +42,12 @@ type runner struct {
 	// isRunning is a flag to indicate if the runner is running or not.
 	isRunning bool
 	ctx       context.Context
+
+	// hideBanner is a flag to indicate if the banner should be hidden or not.
+	hideBanner bool
+
+	// supressLog is a flag to indicate if the logs should be supressed or not.
+	supressLog bool
 }
 
 // IsRunning returns true if the runner is running, otherwise false.
@@ -67,7 +84,9 @@ func (r *runner) BootUp(ctx context.Context) {
 		return
 	}
 
-	fig.NewColorFigure("GLCM", "isometric1", "green", true).Print()
+	if !r.hideBanner {
+		fig.NewColorFigure("GLCM", "isometric1", "green", true).Print()
+	}
 
 	r.ctx = ctx
 

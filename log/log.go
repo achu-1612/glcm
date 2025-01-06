@@ -3,13 +3,13 @@ package log
 import (
 	"io"
 	"os"
-	"sync"
 
 	log "github.com/sirupsen/logrus"
 )
 
 var std *log.Logger
-var mu *sync.Mutex
+
+// var mu *sync.Mutex
 
 func init() {
 	std = log.New()
@@ -19,15 +19,12 @@ func init() {
 
 	std.SetFormatter(&log.TextFormatter{
 		DisableColors: false,
-		FullTimestamp: false,
+		FullTimestamp: true,
 		ForceColors:   true,
 	})
 }
 
 func SetOutput(o io.Writer) {
-	mu.Lock()
-	defer mu.Lock()
-
 	std.SetOutput(o)
 }
 

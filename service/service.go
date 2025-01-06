@@ -1,5 +1,7 @@
 package service
 
+//go:generate mockgen -package service -destination service.mock.go -source service.go -self_package "github.com/achu-1612/glcm/service"
+
 // Service defines an interface which represents a single service and the
 // operations that can be performed on the service.
 // Note:
