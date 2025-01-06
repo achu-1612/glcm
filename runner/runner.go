@@ -151,6 +151,7 @@ func (r *runner) Shutdown() {
 	r.isRunning = false
 }
 
+// RestartAllServices restarts all the registered/running services.
 func (r *runner) RestartAllServices() {
 	r.StopAllServices()
 
@@ -162,6 +163,7 @@ func (r *runner) RestartAllServices() {
 	}
 }
 
+// StopAllServices stops all the registered/running services.
 func (r *runner) StopAllServices() {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -173,6 +175,7 @@ func (r *runner) StopAllServices() {
 	r.swg.Wait()
 }
 
+// RestartService restarts the given list of services.
 func (r *runner) RestartService(name ...string) error {
 	if err := r.StopService(name...); err != nil {
 		return err
@@ -190,6 +193,7 @@ func (r *runner) RestartService(name ...string) error {
 	return nil
 }
 
+// StopService stops the given list of services.
 func (r *runner) StopService(name ...string) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()

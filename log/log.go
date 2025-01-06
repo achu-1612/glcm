@@ -9,8 +9,6 @@ import (
 
 var std *log.Logger
 
-// var mu *sync.Mutex
-
 func init() {
 	std = log.New()
 
