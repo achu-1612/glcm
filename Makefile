@@ -20,3 +20,8 @@ gosec:
 spell-check:
 	go install github.com/client9/misspell/cmd/misspell@latest
 	find . -type f -name \*.go -ls | xargs misspell -source text -error
+
+examples:
+	go run example/bootup/main.go
+	go run example/stop/main.go
+	go run example/restart/main.go
