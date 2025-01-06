@@ -106,7 +106,7 @@ func (w *Wrapper) Start() {
 
 			hErr := h.Execute()
 			if hErr != nil {
-				log.Errorf("pre-hook %s failed for service %s", h.Name(), w.s.Name())
+				log.Errorf("pre-hook %s failed for service %s: %v", h.Name(), w.s.Name(), hErr)
 			}
 		}
 	}()
@@ -128,7 +128,7 @@ func (w *Wrapper) Start() {
 
 			hErr := h.Execute()
 			if hErr != nil {
-				log.Errorf("post-hook %s failed for service %s", h.Name(), w.s.Name())
+				log.Errorf("post-hook %s failed for service %s: %v", h.Name(), w.s.Name(), hErr)
 			}
 		}
 	}()
