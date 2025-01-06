@@ -8,7 +8,6 @@ import (
 )
 
 func Hook(args ...interface{}) error {
-	log.Printf("%d %v\n", len(args), args)
 	if len(args) != 3 {
 		return fmt.Errorf("invalid number of arguments")
 	}
