@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log"
 
 	"github.com/achu-1612/glcm"
@@ -40,6 +41,6 @@ func main() {
 		log.Fatal(err)
 	}
 
-	base.BootUp(nil)
+	base.BootUp(context.TODO())
 	base.Wait()
 }
