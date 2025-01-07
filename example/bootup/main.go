@@ -42,5 +42,5 @@ func main() {
 	}
 
 	base.BootUp(context.TODO())
-	base.Wait()
+	// base.Wait()
 }

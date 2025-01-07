@@ -11,6 +11,9 @@ import (
 // Base is the blueprint for the runner.
 type Base interface {
 	// BootUp boots up the runner. This will start all the registered services.
+	// Note: This is a blocking call. It is to be called after BootUp.
+	// Only a ShutDown() call will stop the runner.
+	// Even after all the registered services are stopped, runner would still be running.
 	BootUp(context.Context)
 
 	// Shutdown shuts down the runner. This will stop all the registered services.
@@ -21,12 +24,6 @@ type Base interface {
 
 	// IsRunning returns true if the runner is running, otherwise false.
 	IsRunning() bool
-
-	// Wait waits for the runner to stop.
-	// Note: This is a blocking call. It is to be called after BootUp.
-	// Only a ShutDown() call will stop the runner.
-	// Even after all the registered services are stopped, runner would still be running.
-	Wait()
 
 	// RestartService restarts the given list of services.
 	RestartService(...string) error

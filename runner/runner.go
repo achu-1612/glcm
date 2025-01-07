@@ -7,6 +7,7 @@ import (
 	"os/signal"
 	"sync"
 	"syscall"
+	"time"
 
 	"github.com/achu-1612/glcm/log"
 	"github.com/achu-1612/glcm/service"
@@ -98,16 +99,7 @@ func (r *runner) BootUp(ctx context.Context) {
 
 	log.Info("Booting up Base Runner ...")
 
-	for _, svc := range r.svc {
-		go svc.Start()
-	}
-
 	r.isRunning = true
-}
-
-// Wait waits for the runner to stop.
-func (r *runner) Wait() {
-	log.Info("Waiting to catch shutdown signal...")
 
 	quit := make(chan os.Signal, 1)
 
@@ -116,11 +108,17 @@ func (r *runner) Wait() {
 		syscall.SIGQUIT, syscall.SIGHUP)
 
 	func() {
-		select {
-		case <-quit:
-			return
-		case <-r.ctx.Done():
-			return
+		t := time.NewTicker(5 * time.Second)
+
+		for {
+			select {
+			case <-quit:
+				return
+			case <-r.ctx.Done():
+				return
+			case <-t.C:
+				r.reconcile()
+			}
 		}
 	}()
 
@@ -129,6 +127,21 @@ func (r *runner) Wait() {
 	r.Shutdown()
 
 	log.Info("All services stopped. Exiting ...")
+}
+
+// reconcile reconciles the state of the services.
+func (r *runner) reconcile() {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	for _, svc := range r.svc {
+		if svc.Status() == service.StatusRegistered {
+			go svc.Start()
+		}
+
+		// TODO:
+		// handle stopped and exited services
+	}
 }
 
 // Shutdown shuts down the runner. This will stop all the registered services.
