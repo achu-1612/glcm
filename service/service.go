@@ -19,3 +19,14 @@ type Service interface {
 	// Status returns the status of the service.
 	Status() string
 }
+
+// Status represents the status of the service.
+type Status string
+
+// Status options for the service.
+const (
+	StatusRegistered Status = "registered"
+	StatusRunning    Status = "running"
+	StatusExited     Status = "exited"
+	StatusStopped    Status = "stopped"
+)

@@ -2,6 +2,7 @@ package service
 
 import (
 	"sync"
+	"sync/atomic"
 
 	"github.com/achu-1612/glcm/hook"
 	"github.com/achu-1612/glcm/log"
@@ -36,12 +37,13 @@ type Wrapper struct {
 	// wg is the service wait group. Not the same as the base runner wait group.
 	wg *sync.WaitGroup
 
-	// isRunning is a flag to indicate if the service is running or not.
-	isRunning bool
+	// shutdownRequest is a flag to indicate if the service is requested to stop by the runner.
+	shutdownRequest atomic.Bool
 
 	// TODO: have a counter to indicate service restarts.
 	// We can also provide a way for the user to specify whether they want the hooks
 	// to get executed everytyhing the service stop and start of just for the first time.
+	status Status
 }
 
 // NewWrapper returns a new instance of the wrapper.
@@ -55,11 +57,23 @@ func NewWrapper(s Service, wg *sync.WaitGroup, opts ...Option) *Wrapper {
 		opt(w)
 	}
 
+	w.status = StatusRegistered
+
 	return w
 }
 
-// Done marks the services as done in the workergroup and clsoes the indication channel.
+// Done marks the services as done in the workergroup and closes the indication channel.
 func (w *Wrapper) done() {
+	// indicate whether the service has stopped by runner or exited on its own.
+	if w.shutdownRequest.Load() {
+		w.status = StatusStopped
+	} else {
+		w.status = StatusExited
+	}
+
+	// clearing the shutdown request flag.
+	w.shutdownRequest.Store(false)
+
 	w.wg.Done()
 
 	close(w.dic)
@@ -79,7 +93,7 @@ func (w *Wrapper) TermCh() chan struct{} {
 
 // reallocate the chan before starting if it is nil
 func (w *Wrapper) Start() {
-	if w.isRunning {
+	if w.status == StatusRunning {
 		log.Infof("Service %s is already running", w.s.Name())
 
 		return
@@ -94,7 +108,7 @@ func (w *Wrapper) Start() {
 	defer func() {
 		w.done() // indicate the worker group that the service has stopped.
 
-		log.Infof("service %s stopped", w.s.Name())
+		log.Infof("service %s status [%s]", w.s.Name(), w.status)
 	}()
 
 	// call the pre exec hooks
@@ -113,7 +127,7 @@ func (w *Wrapper) Start() {
 
 	// start the service
 	log.Infof("starting service %s ...", w.s.Name())
-	w.isRunning = true
+	w.status = StatusRunning
 	w.s.Start(w)
 
 	// call the post exec hooks.
@@ -132,14 +146,12 @@ func (w *Wrapper) Start() {
 			}
 		}
 	}()
-
-	w.isRunning = false
 }
 
 // stop stops the service. It acts like a wrapper around the service's stop method.
 // to be consumed by Stop() and StopAndWait() methods.
 func (w *Wrapper) stop() error {
-	if !w.isRunning {
+	if !(w.status == StatusRunning) {
 		return ErrServiceNotRunning
 	}
 
@@ -147,7 +159,7 @@ func (w *Wrapper) stop() error {
 
 	close(w.tc)
 
-	w.isRunning = false
+	w.shutdownRequest.Store(true)
 
 	return nil
 }
@@ -170,4 +182,8 @@ func (w *Wrapper) StopAndWait() {
 	log.Infof("Waiting for the service %s to exit ...", w.s.Name())
 
 	w.wait()
+}
+
+func (w *Wrapper) Status() Status {
+	return w.status
 }

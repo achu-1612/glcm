@@ -16,9 +16,11 @@ func init() {
 	std.SetLevel(log.InfoLevel)
 
 	std.SetFormatter(&log.TextFormatter{
-		DisableColors: false,
-		FullTimestamp: true,
-		ForceColors:   true,
+		DisableColors:   false,
+		ForceColors:     true,
+		FullTimestamp:   true,
+		TimestampFormat: "2006-01-02 15:04:05",
+		PadLevelText:    true,
 	})
 }
 
