@@ -139,8 +139,11 @@ func (r *runner) reconcile() {
 			go svc.Start()
 		}
 
-		// TODO:
-		// handle stopped and exited services
+		// auto restart the service if it is exited and auto-restart is enabled.
+		// the service will not be started automatically if it stopped by the runner.
+		if svc.Status() == service.StatusExited && svc.IsAutoRestartEnabled() {
+			go svc.Start()
+		}
 	}
 }
 

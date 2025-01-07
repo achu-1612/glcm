@@ -20,3 +20,12 @@ func WithPostHooks(hooks ...hook.Handler) Option {
 		opts.postHooks = hooks
 	}
 }
+
+// WithAutoRestart sets the auto-restart option for the service.
+// AutoRestart will only happen if the service is exited and
+// not stopped by the base runner as a result of runner shutdown or stop call..
+func WithAutoRestart() Option {
+	return func(opts *Wrapper) {
+		opts.autoRestart = true
+	}
+}
