@@ -32,34 +32,19 @@ func main() {
 	}
 
 	if err := base.RegisterService(
-		&service.ServiceB{},
+		&service.ServiceC{},
 		svc.WithPreHooks(
-			hook.NewHookHandler("h1", "pre", "ServiceB"),
-			hook.NewHookHandler("h2", "pre", "ServiceB"),
+			hook.NewHookHandler("h1", "pre", "ServiceC"),
+			hook.NewHookHandler("h2", "pre", "ServiceC"),
 		),
 		svc.WithPostHooks(
-			hook.NewHookHandler("h3", "post", "ServiceB"),
-			hook.NewHookHandler("h4", "post", "ServiceB"),
+			hook.NewHookHandler("h3", "post", "ServiceC"),
+			hook.NewHookHandler("h4", "post", "ServiceC"),
 		),
+		svc.WithAutoRestart(),
 	); err != nil {
 		log.Fatal(err)
 	}
-
-	// Create a thread which will restart ServiceA after 10 seconds.
-	go func() {
-		<-time.After(time.Second * 10)
-
-		if err := base.RestartService("ServiceA"); err != nil {
-			log.Printf("Error while restarting ServiceA: %v", err)
-		}
-	}()
-
-	// Create a thread which will restart all the running service after 20 seconds.
-	// But the baser runner will still be running.
-	go func() {
-		<-time.After(time.Second * 20)
-		base.RestartAllServices()
-	}()
 
 	go func() {
 		<-time.After(time.Second * 30)
@@ -77,4 +62,5 @@ func main() {
 	}()
 
 	base.BootUp(context.TODO())
+	// base.Wait()
 }

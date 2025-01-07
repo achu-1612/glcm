@@ -44,6 +44,9 @@ type Wrapper struct {
 	// We can also provide a way for the user to specify whether they want the hooks
 	// to get executed everytyhing the service stop and start of just for the first time.
 	status Status
+
+	// autoRestart is a flag to indicate if the service should be restarted automatically.
+	autoRestart bool
 }
 
 // NewWrapper returns a new instance of the wrapper.
@@ -60,6 +63,11 @@ func NewWrapper(s Service, wg *sync.WaitGroup, opts ...Option) *Wrapper {
 	w.status = StatusRegistered
 
 	return w
+}
+
+// IsAutoRestartEnabled returns true if the auto-restart is enabled for the service.
+func (w *Wrapper) IsAutoRestartEnabled() bool {
+	return w.autoRestart
 }
 
 // Done marks the services as done in the workergroup and closes the indication channel.

@@ -57,3 +57,29 @@ func (s *ServiceB) Status() string {
 func (s *ServiceB) Name() string {
 	return "ServiceB"
 }
+
+type ServiceC struct{}
+
+func (s *ServiceC) Start(ctx svc.Terminator) {
+	for {
+		<-time.After(time.Second * 10)
+
+		select {
+		case <-ctx.TermCh():
+			return
+
+		default:
+			log.Println("ServiceC is exiting on its own  ", time.Now())
+
+			return
+		}
+	}
+}
+
+func (s *ServiceC) Status() string {
+	return ""
+}
+
+func (s *ServiceC) Name() string {
+	return "ServiceC"
+}
