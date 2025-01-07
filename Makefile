@@ -24,3 +24,5 @@ examples:
 	go run example/bootup/main.go
 	go run example/stop/main.go
 	go run example/restart/main.go
+	go run example/advanced/main.go
+	go run example/auto-restart/main.go
