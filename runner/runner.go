@@ -7,6 +7,7 @@ import (
 	"os/signal"
 	"sync"
 	"syscall"
+	"time"
 
 	"github.com/achu-1612/glcm/log"
 	"github.com/achu-1612/glcm/service"
@@ -98,16 +99,7 @@ func (r *runner) BootUp(ctx context.Context) {
 
 	log.Info("Booting up Base Runner ...")
 
-	for _, svc := range r.svc {
-		go svc.Start()
-	}
-
 	r.isRunning = true
-}
-
-// Wait waits for the runner to stop.
-func (r *runner) Wait() {
-	log.Info("Waiting to catch shutdown signal...")
 
 	quit := make(chan os.Signal, 1)
 
@@ -116,11 +108,17 @@ func (r *runner) Wait() {
 		syscall.SIGQUIT, syscall.SIGHUP)
 
 	func() {
-		select {
-		case <-quit:
-			return
-		case <-r.ctx.Done():
-			return
+		t := time.NewTicker(5 * time.Second)
+
+		for {
+			select {
+			case <-quit:
+				return
+			case <-r.ctx.Done():
+				return
+			case <-t.C:
+				r.reconcile()
+			}
 		}
 	}()
 
@@ -128,13 +126,22 @@ func (r *runner) Wait() {
 
 	r.Shutdown()
 
-	log.Infof("Waiting for %d service(s) to stop ...", len(r.svc))
-
-	r.swg.Wait()
-
 	log.Info("All services stopped. Exiting ...")
+}
 
-	r.isRunning = false
+// reconcile reconciles the state of the services.
+func (r *runner) reconcile() {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	for _, svc := range r.svc {
+		if svc.Status() == service.StatusRegistered {
+			go svc.Start()
+		}
+
+		// TODO:
+		// handle stopped and exited services
+	}
 }
 
 // Shutdown shuts down the runner. This will stop all the registered services.
@@ -145,22 +152,16 @@ func (r *runner) Shutdown() {
 	defer r.mu.Unlock()
 
 	for _, svc := range r.svc {
-		svc.Stop()
+		if svc.Status() == service.StatusRunning {
+			svc.Stop()
+		}
 	}
+
+	log.Infof("Waiting for %d service(s) to stop ...", len(r.svc))
+
+	r.swg.Wait()
 
 	r.isRunning = false
-}
-
-// RestartAllServices restarts all the registered/running services.
-func (r *runner) RestartAllServices() {
-	r.StopAllServices()
-
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	for _, svc := range r.svc {
-		go svc.Start()
-	}
 }
 
 // StopAllServices stops all the registered/running services.
@@ -169,10 +170,26 @@ func (r *runner) StopAllServices() {
 	defer r.mu.Unlock()
 
 	for _, svc := range r.svc {
-		svc.Stop()
+		if svc.Status() == service.StatusRunning {
+			svc.Stop()
+		}
 	}
 
 	r.swg.Wait()
+}
+
+// StopService stops the given list of services.
+func (r *runner) StopService(name ...string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	for _, n := range name {
+		if svc, ok := r.svc[n]; ok && svc.Status() == service.StatusRunning {
+			svc.StopAndWait()
+		}
+	}
+
+	return nil
 }
 
 // RestartService restarts the given list of services.
@@ -193,16 +210,14 @@ func (r *runner) RestartService(name ...string) error {
 	return nil
 }
 
-// StopService stops the given list of services.
-func (r *runner) StopService(name ...string) error {
+// RestartAllServices restarts all the registered/running services.
+func (r *runner) RestartAllServices() {
+	r.StopAllServices()
+
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	for _, n := range name {
-		if svc, ok := r.svc[n]; ok {
-			svc.StopAndWait()
-		}
+	for _, svc := range r.svc {
+		go svc.Start()
 	}
-
-	return nil
 }

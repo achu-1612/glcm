@@ -31,12 +31,12 @@ func main() {
 	if err := base.RegisterService(
 		&service.ServiceB{},
 		svc.WithPreHooks(
-			hook.NewHookHandler("h1", "pre", "ServiceA"),
-			hook.NewHookHandler("h2", "pre", "ServiceA"),
+			hook.NewHookHandler("h1", "pre", "ServiceB"),
+			hook.NewHookHandler("h2", "pre", "ServiceB"),
 		),
 		svc.WithPostHooks(
-			hook.NewHookHandler("h3", "post", "ServiceA"),
-			hook.NewHookHandler("h4", "post", "ServiceA"),
+			hook.NewHookHandler("h3", "post", "ServiceB"),
+			hook.NewHookHandler("h4", "post", "ServiceB"),
 		),
 	); err != nil {
 		log.Fatal(err)
@@ -59,5 +59,4 @@ func main() {
 	}()
 
 	base.BootUp(context.TODO())
-	base.Wait()
 }
