@@ -45,8 +45,16 @@ type Wrapper struct {
 	// to get executed everytyhing the service stop and start of just for the first time.
 	status Status
 
+	// AutoRestart related fields
+
 	// autoRestart is a flag to indicate if the service should be restarted automatically.
 	autoRestart bool
+
+	// backoff is a flag to indicate if the service should be restarted with backoff.
+	backoff bool
+
+	// maxRetries is the maximum number of retries for the service.
+	maxRetries int
 }
 
 // NewWrapper returns a new instance of the wrapper.

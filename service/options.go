@@ -29,3 +29,17 @@ func WithAutoRestart() Option {
 		opts.autoRestart = true
 	}
 }
+
+// WithBackoff sets the backoff option for the service.
+func WithBackoff() Option {
+	return func(opts *Wrapper) {
+		opts.backoff = true
+	}
+}
+
+// WithMaxRetries sets the maximum number of retries for the service.
+func WithMaxRetries(maxRetries int) Option {
+	return func(opts *Wrapper) {
+		opts.maxRetries = maxRetries
+	}
+}
