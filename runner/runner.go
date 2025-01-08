@@ -3,6 +3,7 @@ package runner
 import (
 	"context"
 	"io"
+	"math"
 	"os"
 	"os/signal"
 	"sync"
@@ -135,14 +136,35 @@ func (r *runner) reconcile() {
 	defer r.mu.Unlock()
 
 	for _, svc := range r.svc {
-		if svc.Status() == service.StatusRegistered {
+		if svc.Status == service.StatusRegistered {
 			go svc.Start()
 		}
 
 		// auto restart the service if it is exited and auto-restart is enabled.
 		// the service will not be started automatically if it stopped by the runner.
-		if svc.Status() == service.StatusExited && svc.IsAutoRestartEnabled() {
-			go svc.Start()
+		if svc.Status == service.StatusExited && svc.AutoRestart.Enabled && !svc.AutoRestart.PendingStart.Load() {
+			if svc.AutoRestart.Backoff {
+				backoffDuration := time.Duration(math.Pow(2, float64(svc.AutoRestart.RetryCount))) * time.Second
+
+				if svc.AutoRestart.RetryCount >= svc.AutoRestart.MaxRetries {
+					log.Infof("Service %s reached max retries. Not restarting ...", svc.Name())
+					continue
+				}
+
+				svc.AutoRestart.RetryCount++
+
+				svc.AutoRestart.PendingStart.Store(true)
+
+				go func() {
+					log.Infof("Service %s backing-off. Restarting in %s ...", svc.Name(), backoffDuration)
+					<-time.After(backoffDuration)
+
+					svc.Start()
+				}()
+
+			} else {
+				go svc.Start()
+			}
 		}
 	}
 }
@@ -155,7 +177,7 @@ func (r *runner) Shutdown() {
 	defer r.mu.Unlock()
 
 	for _, svc := range r.svc {
-		if svc.Status() == service.StatusRunning {
+		if svc.Status == service.StatusRunning {
 			svc.Stop()
 		}
 	}
@@ -173,7 +195,7 @@ func (r *runner) StopAllServices() {
 	defer r.mu.Unlock()
 
 	for _, svc := range r.svc {
-		if svc.Status() == service.StatusRunning {
+		if svc.Status == service.StatusRunning {
 			svc.Stop()
 		}
 	}
@@ -187,7 +209,7 @@ func (r *runner) StopService(name ...string) error {
 	defer r.mu.Unlock()
 
 	for _, n := range name {
-		if svc, ok := r.svc[n]; ok && svc.Status() == service.StatusRunning {
+		if svc, ok := r.svc[n]; ok && svc.Status == service.StatusRunning {
 			svc.StopAndWait()
 		}
 	}
