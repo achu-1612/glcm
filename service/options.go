@@ -26,6 +26,20 @@ func WithPostHooks(hooks ...hook.Handler) Option {
 // not stopped by the base runner as a result of runner shutdown or stop call..
 func WithAutoRestart() Option {
 	return func(opts *Wrapper) {
-		opts.autoRestart = true
+		opts.AutoRestart.Enabled = true
+	}
+}
+
+// WithBackoff sets the backoff option for the service.
+func WithBackoff() Option {
+	return func(opts *Wrapper) {
+		opts.AutoRestart.Backoff = true
+	}
+}
+
+// WithMaxRetries sets the maximum number of retries for the service.
+func WithMaxRetries(maxRetries int) Option {
+	return func(opts *Wrapper) {
+		opts.AutoRestart.MaxRetries = maxRetries
 	}
 }

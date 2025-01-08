@@ -62,7 +62,7 @@ type ServiceC struct{}
 
 func (s *ServiceC) Start(ctx svc.Terminator) {
 	for {
-		<-time.After(time.Second * 10)
+		<-time.After(time.Second * 5)
 
 		select {
 		case <-ctx.TermCh():
