@@ -3,6 +3,7 @@ package runner
 import "errors"
 
 var (
-	ErrServiceAlreadyExists = errors.New("service already exists")
-	ErrRunnerAlreadyRunning = errors.New("runner already running")
+	ErrRegisterServiceAlreadyExists = errors.New("service already exists")
+	ErrRunnerAlreadyRunning         = errors.New("runner already running")
+	ErrRegisterNilService           = errors.New("can not register nil service")
 )

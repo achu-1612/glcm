@@ -62,6 +62,10 @@ func (r *runner) IsRunning() bool {
 
 // RegisterService registers a service with the runner.
 func (r *runner) RegisterService(svc service.Service, opts ...service.Option) error {
+	if svc == nil {
+		return ErrRegisterNilService
+	}
+
 	if r.IsRunning() {
 		return ErrRunnerAlreadyRunning
 	}
@@ -70,7 +74,7 @@ func (r *runner) RegisterService(svc service.Service, opts ...service.Option) er
 	defer r.mu.Unlock()
 
 	if _, ok := r.svc[svc.Name()]; ok {
-		return ErrServiceAlreadyExists
+		return ErrRegisterServiceAlreadyExists
 	}
 
 	r.svc[svc.Name()] = service.NewWrapper(svc, r.swg, opts...)
@@ -79,11 +83,9 @@ func (r *runner) RegisterService(svc service.Service, opts ...service.Option) er
 }
 
 // BootUp boots up the runner. This will start all the registered services.
-func (r *runner) BootUp(ctx context.Context) {
+func (r *runner) BootUp(ctx context.Context) error {
 	if r.IsRunning() {
-		log.Info("Runner is already running. Nothing to do.")
-
-		return
+		return ErrRunnerAlreadyRunning
 	}
 
 	if !r.hideBanner {
@@ -98,7 +100,7 @@ func (r *runner) BootUp(ctx context.Context) {
 		r.ctx = context.Background()
 	}
 
-	log.Info("Booting up Base Runner ...")
+	log.Info("Booting up the Runner ...")
 
 	r.isRunning = true
 
@@ -128,43 +130,55 @@ func (r *runner) BootUp(ctx context.Context) {
 	r.Shutdown()
 
 	log.Info("All services stopped. Exiting ...")
+
+	return nil
 }
 
-// reconcile reconciles the state of the services.
+// reconcile reconciles the state of the services and takes necessary actions.
 func (r *runner) reconcile() {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
 	for _, svc := range r.svc {
+		// The services are expected to be in the registered state at first.
+		// If the service is registered, then start the service on fist rec cycle.
 		if svc.Status == service.StatusRegistered {
 			go svc.Start()
 		}
 
-		// auto restart the service if it is exited and auto-restart is enabled.
+		// skip the service if it is already pending start.
+		if svc.AutoRestart.PendingStart.Load() {
+			continue
+		}
+
+		// auto restart the service if it is exited (not stopped) and auto-restart is enabled for the service
 		// the service will not be started automatically if it stopped by the runner.
-		if svc.Status == service.StatusExited && svc.AutoRestart.Enabled && !svc.AutoRestart.PendingStart.Load() {
+		if svc.Status == service.StatusExited && svc.AutoRestart.Enabled {
+			if svc.AutoRestart.RetryCount >= svc.AutoRestart.MaxRetries {
+				log.Infof("Service %s reached max retries. Not restarting ...", svc.Name())
+
+				continue
+			}
+
+			backoffDuration := time.Duration(0)
+
 			if svc.AutoRestart.Backoff {
-				backoffDuration := time.Duration(math.Pow(2, float64(svc.AutoRestart.RetryCount))) * time.Second
+				backoffDuration = time.Duration(math.Pow(2, float64(svc.AutoRestart.RetryCount))) * time.Second
+			}
 
-				if svc.AutoRestart.RetryCount >= svc.AutoRestart.MaxRetries {
-					log.Infof("Service %s reached max retries. Not restarting ...", svc.Name())
-					continue
-				}
+			svc.AutoRestart.RetryCount++
 
-				svc.AutoRestart.RetryCount++
+			// using same flow for both immediate and backoff restarts.
+			svc.AutoRestart.PendingStart.Store(true)
 
-				svc.AutoRestart.PendingStart.Store(true)
-
-				go func() {
+			go func() {
+				if backoffDuration > 0 {
 					log.Infof("Service %s backing-off. Restarting in %s ...", svc.Name(), backoffDuration)
 					<-time.After(backoffDuration)
+				}
 
-					svc.Start()
-				}()
-
-			} else {
-				go svc.Start()
-			}
+				svc.Start()
+			}()
 		}
 	}
 }

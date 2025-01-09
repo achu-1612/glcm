@@ -8,6 +8,11 @@ import (
 	"github.com/achu-1612/glcm/log"
 )
 
+const (
+	defaultMaxRetries = 10
+	defaultBackoffExp = 2
+)
+
 // Terminator interface abstract other implementation of the Wrapper.
 // This is used as an indicator to the service to stop.
 type Terminator interface {
@@ -64,6 +69,9 @@ type AutoRestart struct {
 	// PendingStart is a flag to indicate if the service is pending for a start after the backoff.
 	// This will be used to avoid multiple start calls on the service in recon cycle.
 	PendingStart atomic.Bool
+
+	// BackOffExponent is the exponent for the backoff.
+	BackOffExponent int
 }
 
 // NewWrapper returns a new instance of the wrapper.
@@ -72,7 +80,8 @@ func NewWrapper(s Service, wg *sync.WaitGroup, opts ...Option) *Wrapper {
 		s:  s,
 		wg: wg,
 		AutoRestart: &AutoRestart{
-			MaxRetries: 10, // default value
+			MaxRetries:      defaultMaxRetries,
+			BackOffExponent: defaultBackoffExp,
 		},
 	}
 

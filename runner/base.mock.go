@@ -151,15 +151,3 @@ func (mr *MockBaseMockRecorder) StopService(arg0 ...interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StopService", reflect.TypeOf((*MockBase)(nil).StopService), arg0...)
 }
-
-// Wait mocks base method.
-func (m *MockBase) Wait() {
-	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "Wait")
-}
-
-// Wait indicates an expected call of Wait.
-func (mr *MockBaseMockRecorder) Wait() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Wait", reflect.TypeOf((*MockBase)(nil).Wait))
-}
