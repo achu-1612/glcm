@@ -191,6 +191,4 @@ This project is licensed under the MIT License.
 - Support for timeout for go-routine shutdowns (if possible)
 - Better error handling for the pre and post hooks for service
 - Service dependency
-- Auto restart config for services
-- Exponential back-off restart for restart of service
 
