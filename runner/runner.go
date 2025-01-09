@@ -16,6 +16,30 @@ import (
 	fig "github.com/common-nighthawk/go-figure"
 )
 
+// runner implements the Base interface.
+type runner struct {
+	// swg is a wait group to wait for all the services to stop.
+	swg *sync.WaitGroup
+
+	// mu is a mutex to protect the runner state.
+	mu *sync.Mutex
+
+	// svc is a map of services registered with the runner.
+	svc map[string]*service.Wrapper
+
+	// isRunning is a flag to indicate if the runner is running or not.
+	isRunning bool
+
+	// ctx is the base context for the runner.
+	ctx context.Context
+
+	// hideBanner is a flag to indicate if the banner should be hidden or not.
+	hideBanner bool
+
+	// suppressLog is a flag to indicate if the logs should be suppressed or not.
+	suppressLog bool
+}
+
 // NewRunner returns a new instance of the runner.
 func NewRunner(opts ...Options) Base {
 	r := &runner{
@@ -24,6 +48,7 @@ func NewRunner(opts ...Options) Base {
 		swg: &sync.WaitGroup{},
 	}
 
+	// mutate the runner with the options.
 	for _, opt := range opts {
 		opt(r)
 	}
@@ -33,23 +58,6 @@ func NewRunner(opts ...Options) Base {
 	}
 
 	return r
-}
-
-// runner implements the Base interface.
-type runner struct {
-	swg *sync.WaitGroup
-	mu  *sync.Mutex
-	svc map[string]*service.Wrapper
-
-	// isRunning is a flag to indicate if the runner is running or not.
-	isRunning bool
-	ctx       context.Context
-
-	// hideBanner is a flag to indicate if the banner should be hidden or not.
-	hideBanner bool
-
-	// suppressLog is a flag to indicate if the logs should be suppressed or not.
-	suppressLog bool
 }
 
 // IsRunning returns true if the runner is running, otherwise false.
@@ -110,8 +118,10 @@ func (r *runner) BootUp(ctx context.Context) error {
 		syscall.SIGTERM, syscall.SIGINT,
 		syscall.SIGQUIT, syscall.SIGHUP)
 
+	// TODO: run the reconciler only if there is service state change.
+
 	func() {
-		t := time.NewTicker(5 * time.Second)
+		t := time.NewTicker(time.Second)
 
 		for {
 			select {
@@ -134,7 +144,7 @@ func (r *runner) BootUp(ctx context.Context) error {
 	return nil
 }
 
-// reconcile reconciles the state of the services and takes necessary actions.
+// reconcile takes necessary actions on the services based on their state.
 func (r *runner) reconcile() {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -185,10 +195,10 @@ func (r *runner) reconcile() {
 
 // Shutdown shuts down the runner. This will stop all the registered services.
 func (r *runner) Shutdown() {
-	log.Info("Shutting down Runner...")
-
 	r.mu.Lock()
 	defer r.mu.Unlock()
+
+	log.Info("Shutting down Runner...")
 
 	for _, svc := range r.svc {
 		if svc.Status == service.StatusRunning {
@@ -233,15 +243,15 @@ func (r *runner) StopService(name ...string) error {
 
 // RestartService restarts the given list of services.
 func (r *runner) RestartService(name ...string) error {
-	if err := r.StopService(name...); err != nil {
-		return err
-	}
-
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
 	for _, n := range name {
 		if svc, ok := r.svc[n]; ok {
+			if svc.Status == service.StatusRunning {
+				svc.StopAndWait()
+			}
+
 			go svc.Start()
 		}
 	}
@@ -251,12 +261,14 @@ func (r *runner) RestartService(name ...string) error {
 
 // RestartAllServices restarts all the registered/running services.
 func (r *runner) RestartAllServices() {
-	r.StopAllServices()
-
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
 	for _, svc := range r.svc {
+		if svc.Status == service.StatusRunning {
+			svc.StopAndWait()
+		}
+
 		go svc.Start()
 	}
 }
