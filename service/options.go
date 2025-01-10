@@ -43,3 +43,10 @@ func WithMaxRetries(maxRetries int) Option {
 		opts.AutoRestart.MaxRetries = maxRetries
 	}
 }
+
+// WithBackoffExponent sets the backoff exponent for the service.
+func WithBackoffExponent(exp int) Option {
+	return func(opts *Wrapper) {
+		opts.AutoRestart.BackOffExponent = exp
+	}
+}

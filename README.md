@@ -1,4 +1,5 @@
 # glcm: Go Routine Lifecycle Management
+
 ```
 
       ___           ___       ___           ___
@@ -15,8 +16,6 @@
 
 ```
 
-
-
 `glcm` is a Go package designed to manage the complete lifecycle of goroutines, providing a structured approach to starting, stopping, and monitoring services within your Go applications.
 
 ## Features
@@ -25,6 +24,7 @@
 - **Lifecycle Management**: Control the startup and shutdown sequences of all registered services.
 - **Service Control**: Individually start, stop, and restart services as needed.
 - **Hooks Integration**: Define pre-run and post-run hooks for services to execute custom logic before starting or after stopping a service.
+- **Auto-Restart with Backoff**: Automatically restart services with optional exponential backoff.
 
 ## Installation
 
@@ -107,27 +107,20 @@ if err != nil {
 ctx := context.Background()
 
 // BootUp boots up the runner. This will start all the registered services.
+//Note: This is a blocking call. It is to be called after BootUp.
+// Only a ShutDown() call will stop the runner.
+// Even after all the registered services are stopped, runner would 
 runner.BootUp(ctx)
 ```
 
-### 6. Wait for the runner to stop
-
-```go
-// Wait waits for the runner to stop.
-// Note: This is a blocking call. It is to be called after BootUp.
-// Only a ShutDown() call will stop the runner.
-// Even after all the registered services are stopped, runner would still be running.
-runner.Wait()
-```
-
-### 7. Shutdown the runner
+### 6. Shutdown the runner
 
 ```go
 // Shutdown shuts down the runner. This will stop all the registered services.
 runner.Shutdown()
 ```
 
-### 8. Stop service(s)
+### 7. Stop service(s)
 
 ```go
 // StopService stops the given list of services.
@@ -145,6 +138,23 @@ runner.RestartService("MyService1", "MyService2")
 
 // RestartAllServices restarts all the registered/running services.
 runner.RestartAllServices()
+```
+
+## Auto-Restart with Backoff
+To enable auto-restart with backoff for a service, use the following options during service registration:
+Note: The service will be restarted automatically only when `service.WithAutoRestart()` options is given while service registration and when the service exits automatically not by runner shutting it down.
+
+```go
+err := runner.RegisterService(
+    &MyService{},
+    service.WithAutoRestart(),
+    service.WithBackoff(),
+    service.WithMaxRetries(5), // Optional: Set maximum retries
+    service.WithBackoffExponent(2), // Optional: Set backoff exponent
+)
+if err != nil {
+    // Handle error
+}
 ```
 
 ## Service Hooks
@@ -188,9 +198,7 @@ Contributions are welcome! Please submit issues and pull requests for any improv
 This project is licensed under the MIT License.
 
 ## TODO
-- Support for timeout for go-routine shutdowns (if possible)
-- Better error handling for the pre and post hooks for service
-- Service dependency
-- Auto restart config for services
-- Exponential back-off restart for restart of service
-
+- Support for Job with scheduling.
+- Support for timeout for go-routine shutdowns (if possible).
+- Better error handling for the pre and post hooks for service.
+- Service dependency.

@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"os"
 	"syscall"
@@ -51,16 +50,17 @@ func main() {
 
 		process, err := os.FindProcess(os.Getpid())
 		if err != nil {
-			fmt.Printf("Error finding process: %s\n", err)
+			log.Printf("Error finding process: %s\n", err)
 			return
 		}
 
 		if err := process.Signal(syscall.SIGTERM); err != nil {
-			fmt.Printf("Error sending termination signal: %s\n", err)
+			log.Printf("Error sending termination signal: %s\n", err)
 		}
 
 	}()
 
-	base.BootUp(context.TODO())
-	// base.Wait()
+	if err := base.BootUp(context.TODO()); err != nil {
+		log.Fatalf("Error while booting up the runner: %v", err)
+	}
 }

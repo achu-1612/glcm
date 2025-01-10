@@ -11,10 +11,9 @@ import (
 // Base is the blueprint for the runner.
 type Base interface {
 	// BootUp boots up the runner. This will start all the registered services.
-	// Note: This is a blocking call. It is to be called after BootUp.
-	// Only a ShutDown() call will stop the runner.
+	// Note: This is a blocking call. Only a ShutDown() or Term signal to process will stop the runner.
 	// Even after all the registered services are stopped, runner would still be running.
-	BootUp(context.Context)
+	BootUp(context.Context) error
 
 	// Shutdown shuts down the runner. This will stop all the registered services.
 	Shutdown()

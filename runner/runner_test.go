@@ -15,7 +15,11 @@ func TestIsRunning(t *testing.T) {
 	assert.False(t, r.IsRunning(), "Expected runner to not be running")
 
 	// Start the runner
-	go r.BootUp(context.TODO())
+	go func() {
+		if err := r.BootUp(context.Background()); err != nil {
+			t.Errorf("Error while booting up the runner: %v", err)
+		}
+	}()
 
 	<-time.After(time.Second * 10)
 
