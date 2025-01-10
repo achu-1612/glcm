@@ -173,7 +173,9 @@ func (r *runner) reconcile() {
 			backoffDuration := time.Duration(0)
 
 			if svc.AutoRestart.Backoff {
-				backoffDuration = time.Duration(math.Pow(2, float64(svc.AutoRestart.RetryCount))) * time.Second
+				backoffDuration = time.Duration(
+					math.Pow(float64(svc.AutoRestart.BackOffExponent), float64(svc.AutoRestart.RetryCount)),
+				) * time.Second
 			}
 
 			svc.AutoRestart.RetryCount++
