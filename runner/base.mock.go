@@ -36,9 +36,11 @@ func (m *MockBase) EXPECT() *MockBaseMockRecorder {
 }
 
 // BootUp mocks base method.
-func (m *MockBase) BootUp(arg0 context.Context) {
+func (m *MockBase) BootUp(arg0 context.Context) error {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "BootUp", arg0)
+	ret := m.ctrl.Call(m, "BootUp", arg0)
+	ret0, _ := ret[0].(error)
+	return ret0
 }
 
 // BootUp indicates an expected call of BootUp.
