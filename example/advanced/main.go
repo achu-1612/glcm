@@ -8,8 +8,6 @@ import (
 	"time"
 
 	"github.com/achu-1612/glcm"
-	"github.com/achu-1612/glcm/hook"
-	svc "github.com/achu-1612/glcm/service"
 )
 
 /*
@@ -18,15 +16,15 @@ import (
 	The prehook execution result will be stored in the struct which implements the service interface.
 */
 
-var _ svc.Service = &ServiceA{}
-var _ hook.Handler = &ServiceA{}
+var _ glcm.Service = &ServiceA{}
+var _ glcm.Hook = &ServiceA{}
 
 // ServiceA will imeplement the Service interface as well as the hook Handler interface.
 type ServiceA struct {
 	PreHookResult string
 }
 
-func (s *ServiceA) Start(ctx svc.Terminator) {
+func (s *ServiceA) Start(ctx glcm.Terminator) {
 	for {
 		<-time.After(time.Second * 2)
 
@@ -57,15 +55,15 @@ func (s *ServiceA) Execute() error {
 }
 
 func main() {
-	base := glcm.NewRunner()
+	base := glcm.NewRunner(context.Background(), glcm.RunnerOptions{})
 
 	sA := &ServiceA{}
 
 	if err := base.RegisterService(
 		sA,
-		svc.WithPreHooks(
-			sA,
-		),
+		glcm.ServiceOptions{
+			PreHooks: []glcm.Hook{sA},
+		},
 	); err != nil {
 		log.Fatal(err)
 	}
@@ -85,7 +83,7 @@ func main() {
 
 	}()
 
-	if err := base.BootUp(context.TODO()); err != nil {
+	if err := base.BootUp(); err != nil {
 		log.Fatalf("Error while booting up the runner: %v", err)
 	}
 }

@@ -10,40 +10,58 @@ import (
 	"github.com/achu-1612/glcm"
 	"github.com/achu-1612/glcm/example/hook"
 	"github.com/achu-1612/glcm/example/service"
-	svc "github.com/achu-1612/glcm/service"
 )
 
 func main() {
-	base := glcm.NewRunner()
+	base := glcm.NewRunner(context.Background(), glcm.RunnerOptions{})
 
 	if err := base.RegisterService(
 		&service.ServiceA{},
-		svc.WithPreHooks(
-			hook.NewHookHandler("h1", "pre", "ServiceA"),
-			hook.NewHookHandler("h2", "pre", "ServiceA"),
-		),
-		svc.WithPostHooks(
-			hook.NewHookHandler("h3", "post", "ServiceA"),
-			hook.NewHookHandler("h4", "post", "ServiceA"),
-		),
+		glcm.ServiceOptions{
+			PreHooks: []glcm.Hook{
+				hook.NewHookHandler("h1", "pre", "ServiceA"),
+				hook.NewHookHandler("h2", "pre", "ServiceA"),
+			},
+			PostHooks: []glcm.Hook{
+				hook.NewHookHandler("h3", "post", "ServiceA"),
+				hook.NewHookHandler("h4", "post", "ServiceA"),
+			},
+		},
 	); err != nil {
 		log.Fatal(err)
 	}
 
 	if err := base.RegisterService(
-		&service.ServiceC{},
-		svc.WithPreHooks(
-			hook.NewHookHandler("h1", "pre", "ServiceC"),
-			hook.NewHookHandler("h2", "pre", "ServiceC"),
-		),
-		svc.WithPostHooks(
-			hook.NewHookHandler("h3", "post", "ServiceC"),
-			hook.NewHookHandler("h4", "post", "ServiceC"),
-		),
-		svc.WithAutoRestart(),
+		&service.ServiceB{},
+		glcm.ServiceOptions{
+			PreHooks: []glcm.Hook{
+				hook.NewHookHandler("h1", "pre", "ServiceB"),
+				hook.NewHookHandler("h2", "pre", "ServiceB"),
+			},
+			PostHooks: []glcm.Hook{
+				hook.NewHookHandler("h3", "post", "ServiceB"),
+				hook.NewHookHandler("h4", "post", "ServiceB"),
+			},
+		},
 	); err != nil {
 		log.Fatal(err)
 	}
+
+	// Create a thread which will stop ServiceA after 10 seconds.
+	go func() {
+		<-time.After(time.Second * 10)
+
+		if err := base.StopService("ServiceA"); err != nil {
+			log.Printf("Error while stopping ServiceA: %v", err)
+		}
+	}()
+
+	// Create a thread which will stop all the running service after 20 seconds.
+	// But the base runner will still be running.
+	go func() {
+		<-time.After(time.Second * 20)
+		base.StopAllServices()
+	}()
 
 	go func() {
 		<-time.After(time.Second * 30)
@@ -60,7 +78,7 @@ func main() {
 
 	}()
 
-	if err := base.BootUp(context.TODO()); err != nil {
+	if err := base.BootUp(); err != nil {
 		log.Fatalf("Error while booting up the runner: %v", err)
 	}
 }

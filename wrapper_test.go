@@ -1,18 +1,16 @@
-package service
+package glcm
 
 import (
 	"sync"
 	"testing"
 	"time"
-
-	"github.com/achu-1612/glcm/hook"
 )
 
 func TestWrapper_Start(t *testing.T) {
 	tests := []struct {
 		name      string
-		preHooks  []hook.Handler
-		postHooks []hook.Handler
+		preHooks  []Hook
+		postHooks []Hook
 	}{
 		{
 			name:      "No hooks",
@@ -21,7 +19,7 @@ func TestWrapper_Start(t *testing.T) {
 		},
 		{
 			name: "With pre-hooks",
-			preHooks: []hook.Handler{
+			preHooks: []Hook{
 				&mockHook{name: "pre-hook-1"},
 				&mockHook{name: "pre-hook-2"},
 			},
@@ -30,18 +28,18 @@ func TestWrapper_Start(t *testing.T) {
 		{
 			name:     "With post-hooks",
 			preHooks: nil,
-			postHooks: []hook.Handler{
+			postHooks: []Hook{
 				&mockHook{name: "post-hook-1"},
 				&mockHook{name: "post-hook-2"},
 			},
 		},
 		{
 			name: "With pre and post-hooks",
-			preHooks: []hook.Handler{
+			preHooks: []Hook{
 				&mockHook{name: "pre-hook-1"},
 				&mockHook{name: "pre-hook-2"},
 			},
-			postHooks: []hook.Handler{
+			postHooks: []Hook{
 				&mockHook{name: "post-hook-1"},
 				&mockHook{name: "post-hook-2"},
 			},
@@ -52,7 +50,10 @@ func TestWrapper_Start(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			wg := &sync.WaitGroup{}
 			svc := &mockService{}
-			w := NewWrapper(svc, wg, WithPreHooks(tt.preHooks...), WithPostHooks(tt.postHooks...))
+			w := NewWrapper(svc, wg, ServiceOptions{
+				PreHooks:  tt.preHooks,
+				PostHooks: tt.postHooks,
+			})
 
 			go w.Start()
 

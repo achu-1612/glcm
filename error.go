@@ -1,6 +1,10 @@
-package runner
+package glcm
 
 import "errors"
+
+var (
+	ErrServiceNotRunning = errors.New("service not running")
+)
 
 var (
 	ErrRegisterServiceAlreadyExists = errors.New("service already exists")

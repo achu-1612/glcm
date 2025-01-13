@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/achu-1612/glcm/hook"
+	"github.com/achu-1612/glcm"
 )
 
 func Hook(args ...interface{}) error {
@@ -32,8 +32,8 @@ func Hook(args ...interface{}) error {
 	return nil
 }
 
-func NewHookHandler(hookName, hookType, serviceName string) hook.Handler {
-	return hook.NewHandler(
+func NewHookHandler(hookName, hookType, serviceName string) glcm.Hook {
+	return glcm.NewHook(
 		hookName,
 		Hook,
 		[]interface{}{hookName, hookType, serviceName}...,

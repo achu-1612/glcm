@@ -47,22 +47,21 @@ import "github.com/achu-1612/glcm"
 ### 2. Create a new runner
 
 ```go
-runner := glcm.NewRunner()
+ctx := context.Background()
+runner := glcm.NewRunner(ctx, glcm.RunnerOptions{})
 ```
 
 ### 3. Define a service
 
 Implement the `Service` interface for your service. This interface requires the following methods:
 
-- `Start(service.Terminator)`: Defines the startup logic for the service.
+- `Start(Terminator)`: Defines the startup logic for the service.
 - `Status() string`: Status returns the status of the service.
 - `Name() string`: Returns the name of the service.
 
 Example:
 
 ```go
-import "github.com/achu-1612/glcm/service"
-
 type MyService struct{}
 
 func (m *MyService) Start(ctx service.Terminator) {
@@ -95,7 +94,7 @@ func (m *MyService) Status() string {
 ### 4. Register the service
 
 ```go
-err := runner.RegisterService(&MyService{})
+err := runner.RegisterService(&MyService{}, glcm.ServiceOptions{})
 if err != nil {
     // Handle error
 }
@@ -104,13 +103,13 @@ if err != nil {
 ### 5. Boot up the runner
 
 ```go
-ctx := context.Background()
-
 // BootUp boots up the runner. This will start all the registered services.
 //Note: This is a blocking call. It is to be called after BootUp.
 // Only a ShutDown() call will stop the runner.
 // Even after all the registered services are stopped, runner would 
-runner.BootUp(ctx)
+if err := runner.BootUp(); err != nil {
+    log.Fatalf("Error while booting up the runner: %v", err)
+}
 ```
 
 ### 6. Shutdown the runner
@@ -147,10 +146,14 @@ Note: The service will be restarted automatically only when `service.WithAutoRes
 ```go
 err := runner.RegisterService(
     &MyService{},
-    service.WithAutoRestart(),
-    service.WithBackoff(),
-    service.WithMaxRetries(5), // Optional: Set maximum retries
-    service.WithBackoffExponent(2), // Optional: Set backoff exponent
+    glcm.ServiceOptions{
+        AutoStart: glcm.AutoRestartOptions{
+            Enabled:    true,
+            Backoff:    true,
+            MaxRetries: 5, // Optional: Set maximum retries
+            BackOffExponent: 2, // Optional: Set backoff exponent
+        },
+    },
 )
 if err != nil {
     // Handle error
@@ -161,29 +164,25 @@ if err != nil {
 
 The `hook` package allows you to define hooks that execute before or after a service starts.
 
-### 1. Import the hook package
+### 1. Create a new hook handler
 
 ```go
-import "github.com/achu-1612/glcm/hook"
-```
-
-### 2. Create a new hook handler
-
-```go
-preRunHook := hook.NewHandler("PreRunHook", func(args ...interface{}) error {
+preRunHook := hook.NewHook("PreRunHook", func(args ...interface{}) error {
     // Pre-run logic here
     return nil
 })
 ```
 
-### 3. Register the service with hooks
+### 2. Register the service with hooks
 
 ```go
 err := runner.RegisterService(
     &MyService{}, 
-    service.WithPreRunHook(preRunHook),
-    service.WithPostRunHook(postRunHook)
-    )
+    glcm.ServiceOptions{
+        PreHooks: []glcm.Hook{preRunHook},
+        PostHooks: []glcm.Hook{postRunHook},
+    },
+)
 if err != nil {
     // Handle error
 }

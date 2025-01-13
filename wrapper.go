@@ -1,10 +1,10 @@
-package service
+package glcm
 
 import (
 	"sync"
 	"sync/atomic"
+	"time"
 
-	"github.com/achu-1612/glcm/hook"
 	"github.com/achu-1612/glcm/log"
 )
 
@@ -13,21 +13,15 @@ const (
 	defaultBackoffExp = 2
 )
 
-// Terminator interface abstract other implementation of the Wrapper.
-// This is used as an indicator to the service to stop.
-type Terminator interface {
-	TermCh() chan struct{}
-}
-
 // Wrapper is a wrapper around the service and its context.
 type Wrapper struct {
 	s Service
 
 	// preHooks are the hooks that will be executed before starting the service.
-	preHooks []hook.Handler
+	preHooks []Hook
 
 	// postHooks are the hooks that will be executed after stopping the service.
-	postHooks []hook.Handler
+	postHooks []Hook
 
 	// tc (termination channel) is a channel which will be used to direct the service to stop.
 	// The channel will be closed the service is to be stopped.
@@ -46,50 +40,52 @@ type Wrapper struct {
 	shutdownRequest atomic.Bool
 
 	// status is the current status of the service.
-	Status Status
+	Status ServiceStatus
 
-	// AutoRestart holds the auto-restart related fields.
-	AutoRestart *AutoRestart
+	// auto-restart related configuration.
+
+	AutoRestartEnabled         bool        // flag to indicate if auto-restart is enabled.
+	AutoRestartMaxRetries      int         // maximum number of retries.
+	AutoRestartBackoff         bool        // flag to indicate if backoff is enabled.
+	AutoRestartBackoffExponent int         // exponent for the backoff.
+	AutoRestartRetryCount      int         // current number of retries for the service.
+	AutoRestartPendingStart    atomic.Bool // flag to indicate if the service is pending for a start after the backoff.
+
+	// scheduling related configuration.
+
+	ScheduleEnabled        bool          // flag to indicate if scheduling is enabled.
+	ScheduleCronExpression string        // cron expression for scheduling the service.
+	ScheduleTimeOut        time.Duration // execution timeout for the service.
+	ScheduleMaxRuns        int           // maximum number of runs for the service.
 }
 
-// AutoRestart is a struct to hold the auto-restart related fields.
-type AutoRestart struct {
-	// Enabled is a flag to indicate if the service should be restarted automatically.
-	Enabled bool
-
-	// Backoff is a flag to indicate if the service should be restarted with backoff.
-	Backoff bool
-
-	// MaxRetries is the maximum number of retries for the service.
-	MaxRetries int
-
-	// RetryCount is the current number of retries for the service.
-	RetryCount int
-
-	// PendingStart is a flag to indicate if the service is pending for a start after the backoff.
-	// This will be used to avoid multiple start calls on the service in recon cycle.
-	PendingStart atomic.Bool
-
-	// BackOffExponent is the exponent for the backoff.
-	BackOffExponent int
-}
-
-// NewWrapper returns a new instance of the wrapper.
-func NewWrapper(s Service, wg *sync.WaitGroup, opts ...Option) *Wrapper {
+// NewWrapper returns a new instance of the service Wrapper.
+func NewWrapper(s Service, wg *sync.WaitGroup, opts ServiceOptions) *Wrapper {
 	w := &Wrapper{
-		s:  s,
-		wg: wg,
-		AutoRestart: &AutoRestart{
-			MaxRetries:      defaultMaxRetries,
-			BackOffExponent: defaultBackoffExp,
-		},
+		s:                          s,
+		wg:                         wg,
+		preHooks:                   opts.PreHooks,
+		postHooks:                  opts.PostHooks,
+		Status:                     ServiceStatusRegistered,
+		AutoRestartEnabled:         opts.AutoStart.Enabled,
+		AutoRestartMaxRetries:      opts.AutoStart.MaxRetries,
+		AutoRestartBackoff:         opts.AutoStart.Backoff,
+		AutoRestartBackoffExponent: opts.AutoStart.BackOffExponent,
+		ScheduleEnabled:            opts.Schedule.Enabled,
+		ScheduleCronExpression:     opts.Schedule.Cron,
+		ScheduleTimeOut:            opts.Schedule.TimeOut,
+		ScheduleMaxRuns:            opts.Schedule.MaxRuns,
 	}
 
-	for _, opt := range opts {
-		opt(w)
+	// sanitize the auto-restart configuration.
+
+	if w.AutoRestartMaxRetries == 0 {
+		w.AutoRestartMaxRetries = defaultMaxRetries
 	}
 
-	w.Status = StatusRegistered
+	if w.AutoRestartBackoffExponent == 0 {
+		w.AutoRestartBackoffExponent = defaultBackoffExp
+	}
 
 	return w
 }
@@ -102,9 +98,9 @@ func (w *Wrapper) Name() string {
 func (w *Wrapper) done() {
 	// indicate whether the service has stopped by runner or exited on its own.
 	if w.shutdownRequest.Load() {
-		w.Status = StatusStopped
+		w.Status = ServiceStatusStopped
 	} else {
-		w.Status = StatusExited
+		w.Status = ServiceStatusExited
 	}
 
 	// clearing the shutdown request flag.
@@ -129,7 +125,7 @@ func (w *Wrapper) TermCh() chan struct{} {
 
 // reallocate the chan before starting if it is nil
 func (w *Wrapper) Start() {
-	if w.Status == StatusRunning {
+	if w.Status == ServiceStatusRunning {
 		log.Infof("Service %s is already running", w.s.Name())
 
 		return
@@ -164,8 +160,9 @@ func (w *Wrapper) Start() {
 
 	// start the service
 	log.Infof("starting service %s ...", w.s.Name())
-	w.Status = StatusRunning
-	w.AutoRestart.PendingStart.Store(false)
+
+	w.Status = ServiceStatusRunning
+	w.AutoRestartPendingStart.Store(false)
 	w.s.Start(w)
 
 	// call the post exec hooks.
@@ -189,7 +186,7 @@ func (w *Wrapper) Start() {
 // stop stops the service. It acts like a wrapper around the service's stop method.
 // to be consumed by Stop() and StopAndWait() methods.
 func (w *Wrapper) stop() error {
-	if !(w.Status == StatusRunning) {
+	if !(w.Status == ServiceStatusRunning) {
 		return ErrServiceNotRunning
 	}
 
