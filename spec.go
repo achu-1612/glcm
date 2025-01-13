@@ -60,5 +60,5 @@ type Runner interface {
 	RestartAllServices()
 
 	// BootUp starts the runner.
-	BootUp() error
+	BootUp()
 }

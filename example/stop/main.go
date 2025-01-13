@@ -78,7 +78,5 @@ func main() {
 
 	}()
 
-	if err := base.BootUp(); err != nil {
-		log.Fatalf("Error while booting up the runner: %v", err)
-	}
+	base.BootUp()
 }

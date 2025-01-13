@@ -16,9 +16,7 @@ func TestIsRunning(t *testing.T) {
 
 	// Start the runner
 	go func() {
-		if err := r.BootUp(); err != nil {
-			t.Errorf("Error while booting up the runner: %v", err)
-		}
+		r.BootUp()
 	}()
 
 	<-time.After(time.Second * 10)

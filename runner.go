@@ -88,9 +88,11 @@ func (r *runner) RegisterService(svc Service, opts ServiceOptions) error {
 }
 
 // BootUp boots up the runner.
-func (r *runner) BootUp() error {
+func (r *runner) BootUp() {
 	if r.IsRunning() {
-		return ErrRunnerAlreadyRunning
+		log.Info("Runner is already running. Nothing to do.")
+
+		return
 	}
 
 	if !r.hideBanner {
@@ -121,22 +123,21 @@ func (r *runner) BootUp() error {
 		for {
 			select {
 			case <-quit:
+				log.Info("Received shutdown signal !!!")
+				r.Shutdown()
+				log.Info("All services stopped. Exiting ...")
+
 				return
 			case <-r.ctx.Done():
+				log.Info("Context done. Shutting down ...")
+				r.Shutdown()
+				log.Info("All services stopped. Exiting ...")
 				return
 			case <-t.C:
 				r.reconcile()
 			}
 		}
 	}()
-
-	log.Info("Received shutdown signal !!!")
-
-	r.Shutdown()
-
-	log.Info("All services stopped. Exiting ...")
-
-	return nil
 }
 
 // reconcile takes necessary actions on the services based on their state.
