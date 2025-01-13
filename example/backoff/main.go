@@ -9,17 +9,20 @@ import (
 
 	"github.com/achu-1612/glcm"
 	"github.com/achu-1612/glcm/example/service"
-	svc "github.com/achu-1612/glcm/service"
 )
 
 func main() {
-	base := glcm.NewRunner()
+	base := glcm.NewRunner(context.Background(), glcm.RunnerOptions{})
 
 	if err := base.RegisterService(
 		&service.ServiceC{},
-		svc.WithAutoRestart(),
-		svc.WithBackoff(),
-		svc.WithMaxRetries(3),
+		glcm.ServiceOptions{
+			AutoStart: glcm.AutoRestartOptions{
+				Enabled:    true,
+				Backoff:    true,
+				MaxRetries: 3,
+			},
+		},
 	); err != nil {
 		log.Fatal(err)
 	}
@@ -39,7 +42,7 @@ func main() {
 
 	}()
 
-	if err := base.BootUp(context.TODO()); err != nil {
+	if err := base.BootUp(); err != nil {
 		log.Fatalf("Error while booting up the runner: %v", err)
 	}
 }

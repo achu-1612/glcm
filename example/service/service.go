@@ -4,15 +4,16 @@ import (
 	"log"
 	"time"
 
-	svc "github.com/achu-1612/glcm/service"
+	"github.com/achu-1612/glcm"
 )
 
-var _ svc.Service = &ServiceA{}
-var _ svc.Service = &ServiceB{}
+var _ glcm.Service = &ServiceA{}
+var _ glcm.Service = &ServiceB{}
+var _ glcm.Service = &ServiceC{}
 
 type ServiceA struct{}
 
-func (s *ServiceA) Start(ctx svc.Terminator) {
+func (s *ServiceA) Start(ctx glcm.Terminator) {
 	for {
 		<-time.After(time.Second * 2)
 
@@ -36,7 +37,7 @@ func (s *ServiceA) Name() string {
 
 type ServiceB struct{}
 
-func (s *ServiceB) Start(ctx svc.Terminator) {
+func (s *ServiceB) Start(ctx glcm.Terminator) {
 	for {
 		<-time.After(time.Second * 2)
 
@@ -60,7 +61,7 @@ func (s *ServiceB) Name() string {
 
 type ServiceC struct{}
 
-func (s *ServiceC) Start(ctx svc.Terminator) {
+func (s *ServiceC) Start(ctx glcm.Terminator) {
 	for {
 		<-time.After(time.Second * 5)
 

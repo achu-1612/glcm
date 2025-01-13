@@ -1,4 +1,4 @@
-package runner
+package glcm
 
 import (
 	"context"
@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/achu-1612/glcm/log"
-	"github.com/achu-1612/glcm/service"
 
 	fig "github.com/common-nighthawk/go-figure"
 )
@@ -25,7 +24,7 @@ type runner struct {
 	mu *sync.Mutex
 
 	// svc is a map of services registered with the runner.
-	svc map[string]*service.Wrapper
+	svc map[string]*Wrapper
 
 	// isRunning is a flag to indicate if the runner is running or not.
 	isRunning bool
@@ -36,24 +35,22 @@ type runner struct {
 	// hideBanner is a flag to indicate if the banner should be hidden or not.
 	hideBanner bool
 
-	// suppressLog is a flag to indicate if the logs should be suppressed or not.
-	suppressLog bool
+	// Verbose represents if the logs should be suppressed or not.
+	verbose bool
 }
 
-// NewRunner returns a new instance of the runner.
-func NewRunner(opts ...Options) Base {
+// New returns a new instance of the runner.
+func NewRunner(ctx context.Context, opts RunnerOptions) Runner {
 	r := &runner{
-		svc: make(map[string]*service.Wrapper),
-		mu:  &sync.Mutex{},
-		swg: &sync.WaitGroup{},
+		svc:        make(map[string]*Wrapper),
+		mu:         &sync.Mutex{},
+		swg:        &sync.WaitGroup{},
+		ctx:        ctx,
+		verbose:    opts.Verbose,
+		hideBanner: opts.HideBanner,
 	}
 
-	// mutate the runner with the options.
-	for _, opt := range opts {
-		opt(r)
-	}
-
-	if r.suppressLog {
+	if !r.verbose {
 		log.SetOutput(io.Discard)
 	}
 
@@ -69,7 +66,7 @@ func (r *runner) IsRunning() bool {
 }
 
 // RegisterService registers a service with the runner.
-func (r *runner) RegisterService(svc service.Service, opts ...service.Option) error {
+func (r *runner) RegisterService(svc Service, opts ServiceOptions) error {
 	if svc == nil {
 		return ErrRegisterNilService
 	}
@@ -85,13 +82,13 @@ func (r *runner) RegisterService(svc service.Service, opts ...service.Option) er
 		return ErrRegisterServiceAlreadyExists
 	}
 
-	r.svc[svc.Name()] = service.NewWrapper(svc, r.swg, opts...)
+	r.svc[svc.Name()] = NewWrapper(svc, r.swg, opts)
 
 	return nil
 }
 
-// BootUp boots up the runner. This will start all the registered services.
-func (r *runner) BootUp(ctx context.Context) error {
+// BootUp boots up the runner.
+func (r *runner) BootUp() error {
 	if r.IsRunning() {
 		return ErrRunnerAlreadyRunning
 	}
@@ -99,8 +96,6 @@ func (r *runner) BootUp(ctx context.Context) error {
 	if !r.hideBanner {
 		fig.NewColorFigure("GLCM", "isometric1", "green", true).Print()
 	}
-
-	r.ctx = ctx
 
 	if r.ctx == nil {
 		log.Warn("Base Context is empty. Using the background context.")
@@ -149,47 +144,47 @@ func (r *runner) reconcile() {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	for _, svc := range r.svc {
+	for _, w := range r.svc {
 		// The services are expected to be in the registered state at first.
 		// If the service is registered, then start the service on fist rec cycle.
-		if svc.Status == service.StatusRegistered {
-			go svc.Start()
+		if w.Status == ServiceStatusRegistered {
+			go w.Start()
 		}
 
 		// skip the service if it is already pending start.
-		if svc.AutoRestart.PendingStart.Load() {
+		if w.AutoRestartPendingStart.Load() {
 			continue
 		}
 
 		// auto restart the service if it is exited (not stopped) and auto-restart is enabled for the service
 		// the service will not be started automatically if it stopped by the runner.
-		if svc.Status == service.StatusExited && svc.AutoRestart.Enabled {
-			if svc.AutoRestart.RetryCount >= svc.AutoRestart.MaxRetries {
-				log.Infof("Service %s reached max retries. Not restarting ...", svc.Name())
+		if w.Status == ServiceStatusExited && w.AutoRestartEnabled {
+			if w.AutoRestartRetryCount >= w.AutoRestartMaxRetries {
+				log.Infof("Service %s reached max retries. Not restarting ...", w.Name())
 
 				continue
 			}
 
 			backoffDuration := time.Duration(0)
 
-			if svc.AutoRestart.Backoff {
+			if w.AutoRestartBackoff {
 				backoffDuration = time.Duration(
-					math.Pow(float64(svc.AutoRestart.BackOffExponent), float64(svc.AutoRestart.RetryCount)),
+					math.Pow(float64(w.AutoRestartBackoffExponent), float64(w.AutoRestartRetryCount)),
 				) * time.Second
 			}
 
-			svc.AutoRestart.RetryCount++
+			w.AutoRestartRetryCount++
 
 			// using same flow for both immediate and backoff restarts.
-			svc.AutoRestart.PendingStart.Store(true)
+			w.AutoRestartPendingStart.Store(true)
 
 			go func() {
 				if backoffDuration > 0 {
-					log.Infof("Service %s backing-off. Restarting in %s ...", svc.Name(), backoffDuration)
+					log.Infof("Service %s backing-off. Restarting in %s ...", w.Name(), backoffDuration)
 					<-time.After(backoffDuration)
 				}
 
-				svc.Start()
+				w.Start()
 			}()
 		}
 	}
@@ -203,7 +198,7 @@ func (r *runner) Shutdown() {
 	log.Info("Shutting down Runner...")
 
 	for _, svc := range r.svc {
-		if svc.Status == service.StatusRunning {
+		if svc.Status == ServiceStatusRunning {
 			svc.Stop()
 		}
 	}
@@ -221,7 +216,7 @@ func (r *runner) StopAllServices() {
 	defer r.mu.Unlock()
 
 	for _, svc := range r.svc {
-		if svc.Status == service.StatusRunning {
+		if svc.Status == ServiceStatusRunning {
 			svc.Stop()
 		}
 	}
@@ -235,7 +230,7 @@ func (r *runner) StopService(name ...string) error {
 	defer r.mu.Unlock()
 
 	for _, n := range name {
-		if svc, ok := r.svc[n]; ok && svc.Status == service.StatusRunning {
+		if svc, ok := r.svc[n]; ok && svc.Status == ServiceStatusRunning {
 			svc.StopAndWait()
 		}
 	}
@@ -250,7 +245,7 @@ func (r *runner) RestartService(name ...string) error {
 
 	for _, n := range name {
 		if svc, ok := r.svc[n]; ok {
-			if svc.Status == service.StatusRunning {
+			if svc.Status == ServiceStatusRunning {
 				svc.StopAndWait()
 			}
 
@@ -267,7 +262,7 @@ func (r *runner) RestartAllServices() {
 	defer r.mu.Unlock()
 
 	for _, svc := range r.svc {
-		if svc.Status == service.StatusRunning {
+		if svc.Status == ServiceStatusRunning {
 			svc.StopAndWait()
 		}
 
