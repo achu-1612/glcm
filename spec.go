@@ -61,4 +61,7 @@ type Runner interface {
 
 	// BootUp starts the runner.
 	BootUp() error
+
+	// ListServices lists all the services.
+	ListServices() interface{}
 }

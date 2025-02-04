@@ -2,6 +2,7 @@ package glcm
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"math"
 	"os"
@@ -35,24 +36,38 @@ type runner struct {
 	// hideBanner is a flag to indicate if the banner should be hidden or not.
 	hideBanner bool
 
-	// Verbose represents if the logs should be suppressed or not.
+	// verbose represents if the logs should be suppressed or not.
 	verbose bool
+
+	// socket represents if the socket should be enabled or not for the runner.
+	socket bool
+
+	// socketPath represents the path to the socket file.
+	socketPath string
+
+	// allowedUIDs represents the allowed user ids to interact with the socket.
+	allowedUIDs []int
 }
 
 // New returns a new instance of the runner.
 func NewRunner(ctx context.Context, opts RunnerOptions) Runner {
 	r := &runner{
-		svc:        make(map[string]*Wrapper),
-		mu:         &sync.Mutex{},
-		swg:        &sync.WaitGroup{},
-		ctx:        ctx,
-		verbose:    opts.Verbose,
-		hideBanner: opts.HideBanner,
+		svc:         make(map[string]*Wrapper),
+		mu:          &sync.Mutex{},
+		swg:         &sync.WaitGroup{},
+		ctx:         ctx,
+		verbose:     opts.Verbose,
+		hideBanner:  opts.HideBanner,
+		socket:      opts.Socket,
+		socketPath:  opts.SocketPath,
+		allowedUIDs: opts.AllowedUID,
 	}
 
 	if !r.verbose {
 		log.SetOutput(io.Discard)
 	}
+
+	log.Infof("%v", r)
 
 	return r
 }
@@ -114,6 +129,21 @@ func (r *runner) BootUp() error {
 		syscall.SIGQUIT, syscall.SIGHUP)
 
 	// TODO: run the reconciler only if there is service state change.
+
+	if r.socket {
+		s, err := newSocket(r, r.socketPath, r.allowedUIDs)
+		if err != nil {
+			return fmt.Errorf("failed to create socket: %v", err)
+		}
+
+		// start the socket inside a go-routine, as Start is a blocking call.,
+		// it will be shutdown automatically when we receive the signal.
+		go func() {
+			if err := s.start(quit); err != nil {
+				log.Errorf("failed to start socket: %v", err)
+			}
+		}()
+	}
 
 	func() {
 		t := time.NewTicker(time.Second)
@@ -268,4 +298,26 @@ func (r *runner) RestartAllServices() {
 
 		go svc.Start()
 	}
+}
+
+func (r *runner) ListServices() interface{} {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	var services []struct {
+		Name   string
+		Status string
+	}
+
+	for _, svc := range r.svc {
+		services = append(services, struct {
+			Name   string
+			Status string
+		}{
+			Name:   svc.Name(),
+			Status: string(svc.Status),
+		})
+	}
+
+	return services
 }
