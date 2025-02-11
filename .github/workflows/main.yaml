@@ -22,7 +22,7 @@ jobs:
           path: '${{ env.GOPATH }}/src/github.com/${{ github.repository }}'
       - uses: actions/setup-go@v5
         with:
-          go-version: 1.23.2
+          go-version: 1.22.7
           cache: false
       - name: Run Unit Tests
         run: |

@@ -21,11 +21,11 @@ type socketAction string
 
 // list of supported socket action commands
 const (
-	socketActionStopAllServices socketAction = "stopAll"
-	socketActionStopService     socketAction = "stop"
-	socketActionRestartAll      socketAction = "restartAll"
-	socketActionRestartService  socketAction = "restart"
-	socketActionStatus          socketAction = "status"
+	SocketActionStopAllServices socketAction = "stopAll"
+	SocketActionStopService     socketAction = "stop"
+	SocketActionRestartAll      socketAction = "restartAll"
+	SocketActionRestartService  socketAction = "restart"
+	SocketActionStatus          socketAction = "status"
 	// socketActionBootup          socketAction = "bootup"
 	// socketActionShutdown        socketAction = "shutdown"
 )
@@ -39,9 +39,9 @@ const (
 	Failure socketCommandStatus = "failure"
 )
 
-// socketResponse represents the response from the socket.
-type socketResponse struct {
-	Result interface{}         `json:"message"`
+// SocketResponse represents the response from the socket.
+type SocketResponse struct {
+	Result interface{}         `json:"resulth"`
 	Status socketCommandStatus `json:"status"`
 }
 
@@ -68,72 +68,72 @@ type socket struct {
 }
 
 // stopService stops the service with the given name(s).
-func (s *socket) stopService(name ...string) *socketResponse {
+func (s *socket) stopService(name ...string) *SocketResponse {
 	if len(name) == 0 {
-		return &socketResponse{
+		return &SocketResponse{
 			Result: "no service name provided",
 			Status: Failure,
 		}
 	}
 
 	if err := s.r.StopService(name...); err != nil {
-		return &socketResponse{
+		return &SocketResponse{
 			Result: fmt.Sprintf("failed to stop service(s)- %v: %v", name, err),
 			Status: Failure,
 		}
 	}
 
-	return &socketResponse{
+	return &SocketResponse{
 		Result: fmt.Sprintf("service(s) stopped successfully: %v", name),
 		Status: Success,
 	}
 }
 
 // stopAllServices stops all the services.
-func (s *socket) stopAllServices() *socketResponse {
+func (s *socket) stopAllServices() *SocketResponse {
 	s.r.StopAllServices()
 
-	return &socketResponse{
+	return &SocketResponse{
 		Result: "All services stopped successfully",
 		Status: Success,
 	}
 }
 
 // restartService restarts the service with the given name(s).
-func (s *socket) restartService(name ...string) *socketResponse {
+func (s *socket) restartService(name ...string) *SocketResponse {
 	if len(name) == 0 {
-		return &socketResponse{
+		return &SocketResponse{
 			Result: "no service name provided",
 			Status: Failure,
 		}
 	}
 
 	if err := s.r.RestartService(name...); err != nil {
-		return &socketResponse{
+		return &SocketResponse{
 			Result: fmt.Sprintf("failed to restart service(s)- %v: %v", name, err),
 			Status: Failure,
 		}
 	}
 
-	return &socketResponse{
+	return &SocketResponse{
 		Result: fmt.Sprintf("service(s) restarted successfully: %v", name),
 		Status: Success,
 	}
 }
 
 // restartAllServices restarts all the services.
-func (s *socket) restartAllServices() *socketResponse {
+func (s *socket) restartAllServices() *SocketResponse {
 	s.r.RestartAllServices()
 
-	return &socketResponse{
+	return &SocketResponse{
 		Result: "All services restarted successfully",
 		Status: Success,
 	}
 }
 
 // status returns the status of the runner along with the status of each registered service.
-func (s *socket) status() *socketResponse {
-	return &socketResponse{
+func (s *socket) status() *SocketResponse {
+	return &SocketResponse{
 		Result: s.r.Status(),
 		Status: Success,
 	}
@@ -233,26 +233,26 @@ func (s *socket) handler(conn net.Conn) error {
 
 	log.Infof("received command: %s with args: %v", command, args)
 
-	var res *socketResponse
+	var res *SocketResponse
 
 	switch socketAction(command) {
-	case socketActionStopAllServices:
+	case SocketActionStopAllServices:
 		res = s.stopAllServices()
 
-	case socketActionStopService:
+	case SocketActionStopService:
 		res = s.stopService(args...)
 
-	case socketActionRestartAll:
+	case SocketActionRestartAll:
 		res = s.restartAllServices()
 
-	case socketActionRestartService:
+	case SocketActionRestartService:
 		res = s.restartService(args...)
 
-	case socketActionStatus:
+	case SocketActionStatus:
 		res = s.status()
 
 	default:
-		res = &socketResponse{
+		res = &SocketResponse{
 			Result: fmt.Sprintf("unknown command: %s", command),
 			Status: Failure,
 		}
