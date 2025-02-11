@@ -211,25 +211,9 @@ The following messages can be sent to the socket to control the services:
 - `list`: list all the service and their current status.
 
 ### Example Usage
-
-#### Windows
-
-```go
-// Example for Windows named pipe communication
-pipeName := `\\.\pipe\glcm_pipe`
-conn, err := winio.DialPipe(pipeName, nil)
-if err != nil {
-    log.Fatalf("Failed to connect to pipe: %v", err)
-}
-defer conn.Close()
-
-_, err = conn.Write([]byte("start MyService"))
-if err != nil {
-    log.Fatalf("Failed to send message: %v", err)
-}
+```sh
+echo "restartAll" | socat - UNIX-CONNECT:/tmp/glcm.sock
 ```
-
-#### Linux
 
 ```go
 // Example for Linux Unix domain socket communication
