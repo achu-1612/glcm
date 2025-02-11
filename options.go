@@ -57,4 +57,13 @@ type RunnerOptions struct {
 
 	// Verbose represents if the logs should be suppressed or not.
 	Verbose bool
+
+	// Socket represents if the socket should be enabled or not.
+	Socket bool
+
+	// SocketPath represents the path to the socket file.
+	SocketPath string
+
+	// AllowedUID represents the allowed user ids to interact with the socket.
+	AllowedUID []int
 }

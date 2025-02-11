@@ -188,6 +188,64 @@ if err != nil {
 }
 ```
 
+## Socket Usage
+
+`glcm` supports socket communication for both Windows and Linux platforms. This allows you to send commands to control the lifecycle of services.
+
+### Windows
+
+On Windows, `glcm` uses named pipes for socket communication.
+
+### Linux
+
+On Linux, `glcm` uses Unix domain sockets for socket communication.
+
+### Allowed Messages and Actions
+
+The following messages can be sent to the socket to control the services:
+
+- `restart <service_name>`: restart the specified service
+- `stop <service_name>`: stop the specified service.
+- `restartAll <service_name>`: restart all the services.
+- `stopAll <service_name>`: stop all the services.
+- `list`: list all the service and their current status.
+
+### Example Usage
+
+#### Windows
+
+```go
+// Example for Windows named pipe communication
+pipeName := `\\.\pipe\glcm_pipe`
+conn, err := winio.DialPipe(pipeName, nil)
+if err != nil {
+    log.Fatalf("Failed to connect to pipe: %v", err)
+}
+defer conn.Close()
+
+_, err = conn.Write([]byte("start MyService"))
+if err != nil {
+    log.Fatalf("Failed to send message: %v", err)
+}
+```
+
+#### Linux
+
+```go
+// Example for Linux Unix domain socket communication
+socketPath := "/tmp/glcm_socket"
+conn, err := net.Dial("unix", socketPath)
+if err != nil {
+    log.Fatalf("Failed to connect to socket: %v", err)
+}
+defer conn.Close()
+
+_, err = conn.Write([]byte("start MyService"))
+if err != nil {
+    log.Fatalf("Failed to send message: %v", err)
+}
+```
+
 ## Contributing
 
 Contributions are welcome! Please submit issues and pull requests for any improvements or bug fixes.
