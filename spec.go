@@ -62,6 +62,6 @@ type Runner interface {
 	// BootUp starts the runner.
 	BootUp() error
 
-	// ListServices lists all the services.
-	ListServices() interface{}
+	// Status returns the status of the runner along with the status of each registered service.
+	Status() *RunnerStatus
 }

@@ -49,6 +49,12 @@ type runner struct {
 	allowedUIDs []int
 }
 
+// RunnerStatus represents the status of the runner.
+type RunnerStatus struct {
+	IsRunning bool                     `json:"isRunning"`
+	Services  map[string]ServiceStatus `json:"services"`
+}
+
 // New returns a new instance of the runner.
 func NewRunner(ctx context.Context, opts RunnerOptions) Runner {
 	r := &runner{
@@ -300,24 +306,18 @@ func (r *runner) RestartAllServices() {
 	}
 }
 
-func (r *runner) ListServices() interface{} {
+func (r *runner) Status() *RunnerStatus {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	var services []struct {
-		Name   string
-		Status string
+	status := &RunnerStatus{
+		IsRunning: r.isRunning,
+		Services:  make(map[string]ServiceStatus),
 	}
 
 	for _, svc := range r.svc {
-		services = append(services, struct {
-			Name   string
-			Status string
-		}{
-			Name:   svc.Name(),
-			Status: string(svc.Status),
-		})
+		status.Services[svc.Name()] = svc.Status
 	}
 
-	return services
+	return status
 }
