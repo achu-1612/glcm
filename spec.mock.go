@@ -268,6 +268,20 @@ func (mr *MockRunnerMockRecorder) Shutdown() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Shutdown", reflect.TypeOf((*MockRunner)(nil).Shutdown))
 }
 
+// Status mocks base method.
+func (m *MockRunner) Status() *RunnerStatus {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Status")
+	ret0, _ := ret[0].(*RunnerStatus)
+	return ret0
+}
+
+// Status indicates an expected call of Status.
+func (mr *MockRunnerMockRecorder) Status() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Status", reflect.TypeOf((*MockRunner)(nil).Status))
+}
+
 // StopAllServices mocks base method.
 func (m *MockRunner) StopAllServices() {
 	m.ctrl.T.Helper()
