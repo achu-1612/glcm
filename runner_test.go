@@ -161,7 +161,7 @@ func TestRestartService(t *testing.T) {
 		"mockService2": mockWrapper2,
 	}
 
-	r.RestartService("mockService1")
+	_ = r.RestartService("mockService1")
 	<-time.After(time.Second * 1)
 }
 
@@ -214,7 +214,7 @@ func TestStopService(t *testing.T) {
 		"mockService3": mockWrapper3,
 	}
 
-	r.StopService("mockService1", "mockService3")
+	_ = r.StopService("mockService1", "mockService3")
 }
 
 func TestShutdown(t *testing.T) {
