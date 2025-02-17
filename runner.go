@@ -99,11 +99,13 @@ func (r *runner) RegisterService(svc Service, opts ServiceOptions) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	if _, ok := r.svc[svc.Name()]; ok {
+	sName := svc.Name()
+
+	if _, ok := r.svc[sName]; ok {
 		return ErrRegisterServiceAlreadyExists
 	}
 
-	r.svc[svc.Name()] = NewWrapper(svc, r.swg, opts)
+	r.svc[sName] = NewWrapper(svc, r.swg, opts)
 
 	return nil
 }
@@ -183,7 +185,7 @@ func (r *runner) reconcile() {
 	for _, w := range r.svc {
 		// The services are expected to be in the registered state at first.
 		// If the service is registered, then start the service on fist rec cycle.
-		if w.Status == ServiceStatusRegistered {
+		if w.Status() == ServiceStatusRegistered {
 			go w.Start()
 		}
 
@@ -194,7 +196,7 @@ func (r *runner) reconcile() {
 
 		// auto restart the service if it is exited (not stopped) and auto-restart is enabled for the service
 		// the service will not be started automatically if it stopped by the runner.
-		if w.Status == ServiceStatusExited && w.AutoRestartEnabled {
+		if w.Status() == ServiceStatusExited && w.AutoRestartEnabled {
 			if w.AutoRestartRetryCount >= w.AutoRestartMaxRetries {
 				log.Infof("Service %s reached max retries. Not restarting ...", w.Name())
 
@@ -234,7 +236,7 @@ func (r *runner) Shutdown() {
 	log.Info("Shutting down Runner...")
 
 	for _, svc := range r.svc {
-		if svc.Status == ServiceStatusRunning {
+		if svc.Status() == ServiceStatusRunning {
 			svc.Stop()
 		}
 	}
@@ -252,7 +254,7 @@ func (r *runner) StopAllServices() {
 	defer r.mu.Unlock()
 
 	for _, svc := range r.svc {
-		if svc.Status == ServiceStatusRunning {
+		if svc.Status() == ServiceStatusRunning {
 			svc.Stop()
 		}
 	}
@@ -266,7 +268,7 @@ func (r *runner) StopService(name ...string) error {
 	defer r.mu.Unlock()
 
 	for _, n := range name {
-		if svc, ok := r.svc[n]; ok && svc.Status == ServiceStatusRunning {
+		if svc, ok := r.svc[n]; ok && svc.Status() == ServiceStatusRunning {
 			svc.StopAndWait()
 		}
 	}
@@ -281,7 +283,7 @@ func (r *runner) RestartService(name ...string) error {
 
 	for _, n := range name {
 		if svc, ok := r.svc[n]; ok {
-			if svc.Status == ServiceStatusRunning {
+			if svc.Status() == ServiceStatusRunning {
 				svc.StopAndWait()
 			}
 
@@ -298,7 +300,7 @@ func (r *runner) RestartAllServices() {
 	defer r.mu.Unlock()
 
 	for _, svc := range r.svc {
-		if svc.Status == ServiceStatusRunning {
+		if svc.Status() == ServiceStatusRunning {
 			svc.StopAndWait()
 		}
 
@@ -316,7 +318,7 @@ func (r *runner) Status() *RunnerStatus {
 	}
 
 	for _, svc := range r.svc {
-		status.Services[svc.Name()] = svc.Status
+		status.Services[svc.Name()] = svc.Status()
 	}
 
 	return status

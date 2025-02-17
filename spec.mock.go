@@ -110,20 +110,6 @@ func (mr *MockServiceMockRecorder) Start(arg0 interface{}) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Start", reflect.TypeOf((*MockService)(nil).Start), arg0)
 }
 
-// Status mocks base method.
-func (m *MockService) Status() string {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Status")
-	ret0, _ := ret[0].(string)
-	return ret0
-}
-
-// Status indicates an expected call of Status.
-func (mr *MockServiceMockRecorder) Status() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Status", reflect.TypeOf((*MockService)(nil).Status))
-}
-
 // MockTerminator is a mock of Terminator interface.
 type MockTerminator struct {
 	ctrl     *gomock.Controller

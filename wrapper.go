@@ -40,7 +40,7 @@ type Wrapper struct {
 	shutdownRequest atomic.Bool
 
 	// status is the current status of the service.
-	Status ServiceStatus
+	status ServiceStatus
 
 	// auto-restart related configuration.
 
@@ -66,7 +66,7 @@ func NewWrapper(s Service, wg *sync.WaitGroup, opts ServiceOptions) *Wrapper {
 		wg:                         wg,
 		preHooks:                   opts.PreHooks,
 		postHooks:                  opts.PostHooks,
-		Status:                     ServiceStatusRegistered,
+		status:                     ServiceStatusRegistered,
 		AutoRestartEnabled:         opts.AutoStart.Enabled,
 		AutoRestartMaxRetries:      opts.AutoStart.MaxRetries,
 		AutoRestartBackoff:         opts.AutoStart.Backoff,
@@ -94,13 +94,17 @@ func (w *Wrapper) Name() string {
 	return w.s.Name()
 }
 
+func (w *Wrapper) Status() ServiceStatus {
+	return w.status
+}
+
 // Done marks the services as done in the workergroup and closes the indication channel.
 func (w *Wrapper) done() {
 	// indicate whether the service has stopped by runner or exited on its own.
 	if w.shutdownRequest.Load() {
-		w.Status = ServiceStatusStopped
+		w.status = ServiceStatusStopped
 	} else {
-		w.Status = ServiceStatusExited
+		w.status = ServiceStatusExited
 	}
 
 	// clearing the shutdown request flag.
@@ -125,7 +129,7 @@ func (w *Wrapper) TermCh() chan struct{} {
 
 // reallocate the chan before starting if it is nil
 func (w *Wrapper) Start() {
-	if w.Status == ServiceStatusRunning {
+	if w.status == ServiceStatusRunning {
 		log.Infof("Service %s is already running", w.s.Name())
 
 		return
@@ -141,7 +145,7 @@ func (w *Wrapper) Start() {
 	defer func() {
 		w.done() // indicate the worker group that the service has stopped.
 
-		log.Infof("service %s status [%s]", w.s.Name(), w.Status)
+		log.Infof("service %s status [%s]", w.s.Name(), w.status)
 	}()
 
 	// call the pre exec hooks
@@ -161,7 +165,7 @@ func (w *Wrapper) Start() {
 	// start the service
 	log.Infof("starting service %s ...", w.s.Name())
 
-	w.Status = ServiceStatusRunning
+	w.status = ServiceStatusRunning
 	w.AutoRestartPendingStart.Store(false)
 	w.s.Start(w)
 
@@ -186,7 +190,7 @@ func (w *Wrapper) Start() {
 // stop stops the service. It acts like a wrapper around the service's stop method.
 // to be consumed by Stop() and StopAndWait() methods.
 func (w *Wrapper) stop() error {
-	if !(w.Status == ServiceStatusRunning) {
+	if !(w.status == ServiceStatusRunning) {
 		return ErrServiceNotRunning
 	}
 

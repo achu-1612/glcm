@@ -26,9 +26,6 @@ type Service interface {
 
 	// Start executes/boots-up/starts a service.
 	Start(Terminator)
-
-	// Status returns the status of the service.
-	Status() string
 }
 
 // Terminator defines an indicator to the service to stop.
