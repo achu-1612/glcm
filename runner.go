@@ -2,7 +2,6 @@ package glcm
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"math"
 	"os"
@@ -25,7 +24,7 @@ type runner struct {
 	mu *sync.Mutex
 
 	// svc is a map of services registered with the runner.
-	svc map[string]*Wrapper
+	svc map[string]Wrapper
 
 	// isRunning is a flag to indicate if the runner is running or not.
 	isRunning bool
@@ -39,8 +38,8 @@ type runner struct {
 	// verbose represents if the logs should be suppressed or not.
 	verbose bool
 
-	// socket represents if the socket should be enabled or not for the runner.
-	socket bool
+	// socket holds the object of the socket.
+	socket *socket
 
 	// socketPath represents the path to the socket file.
 	socketPath string
@@ -58,19 +57,33 @@ type RunnerStatus struct {
 // New returns a new instance of the runner.
 func NewRunner(ctx context.Context, opts RunnerOptions) Runner {
 	r := &runner{
-		svc:         make(map[string]*Wrapper),
+		svc:         make(map[string]Wrapper),
 		mu:          &sync.Mutex{},
 		swg:         &sync.WaitGroup{},
 		ctx:         ctx,
 		verbose:     opts.Verbose,
 		hideBanner:  opts.HideBanner,
-		socket:      opts.Socket,
 		socketPath:  opts.SocketPath,
 		allowedUIDs: opts.AllowedUID,
 	}
 
 	if !r.verbose {
 		log.SetOutput(io.Discard)
+	}
+
+	if r.ctx == nil {
+		log.Warn("Base Context is empty. Using the background context.")
+
+		r.ctx = context.Background()
+	}
+
+	if opts.Socket {
+		socket, err := newSocket(r, opts.SocketPath, opts.AllowedUID)
+		if err != nil {
+			log.Errorf("failed to create socket: %v", err)
+		}
+
+		r.socket = socket
 	}
 
 	log.Infof("%v", r)
@@ -99,11 +112,13 @@ func (r *runner) RegisterService(svc Service, opts ServiceOptions) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	if _, ok := r.svc[svc.Name()]; ok {
+	sName := svc.Name()
+
+	if _, ok := r.svc[sName]; ok {
 		return ErrRegisterServiceAlreadyExists
 	}
 
-	r.svc[svc.Name()] = NewWrapper(svc, r.swg, opts)
+	r.svc[sName] = NewWrapper(svc, r.swg, opts)
 
 	return nil
 }
@@ -118,12 +133,6 @@ func (r *runner) BootUp() error {
 		fig.NewColorFigure("GLCM", "isometric1", "green", true).Print()
 	}
 
-	if r.ctx == nil {
-		log.Warn("Base Context is empty. Using the background context.")
-
-		r.ctx = context.Background()
-	}
-
 	log.Info("Booting up the Runner ...")
 
 	r.isRunning = true
@@ -136,16 +145,11 @@ func (r *runner) BootUp() error {
 
 	// TODO: run the reconciler only if there is service state change.
 
-	if r.socket {
-		s, err := newSocket(r, r.socketPath, r.allowedUIDs)
-		if err != nil {
-			return fmt.Errorf("failed to create socket: %v", err)
-		}
-
+	if r.socket != nil {
 		// start the socket inside a go-routine, as Start is a blocking call.,
 		// it will be shutdown automatically when we receive the signal.
 		go func() {
-			if err := s.start(quit); err != nil {
+			if err := r.socket.start(quit); err != nil {
 				log.Errorf("failed to start socket: %v", err)
 			}
 		}()
@@ -183,19 +187,19 @@ func (r *runner) reconcile() {
 	for _, w := range r.svc {
 		// The services are expected to be in the registered state at first.
 		// If the service is registered, then start the service on fist rec cycle.
-		if w.Status == ServiceStatusRegistered {
+		if w.Status() == ServiceStatusRegistered {
 			go w.Start()
 		}
 
 		// skip the service if it is already pending start.
-		if w.AutoRestartPendingStart.Load() {
+		if w.AutoRestart().PendingStart.Load() {
 			continue
 		}
 
 		// auto restart the service if it is exited (not stopped) and auto-restart is enabled for the service
 		// the service will not be started automatically if it stopped by the runner.
-		if w.Status == ServiceStatusExited && w.AutoRestartEnabled {
-			if w.AutoRestartRetryCount >= w.AutoRestartMaxRetries {
+		if w.Status() == ServiceStatusExited && w.AutoRestart().Enabled {
+			if w.AutoRestart().RetryCount >= w.AutoRestart().MaxRetries {
 				log.Infof("Service %s reached max retries. Not restarting ...", w.Name())
 
 				continue
@@ -203,16 +207,16 @@ func (r *runner) reconcile() {
 
 			backoffDuration := time.Duration(0)
 
-			if w.AutoRestartBackoff {
+			if w.AutoRestart().Backoff {
 				backoffDuration = time.Duration(
-					math.Pow(float64(w.AutoRestartBackoffExponent), float64(w.AutoRestartRetryCount)),
+					math.Pow(float64(w.AutoRestart().BackoffExponent), float64(w.AutoRestart().RetryCount)),
 				) * time.Second
 			}
 
-			w.AutoRestartRetryCount++
+			w.AutoRestart().RetryCount++
 
 			// using same flow for both immediate and backoff restarts.
-			w.AutoRestartPendingStart.Store(true)
+			w.AutoRestart().PendingStart.Store(true)
 
 			go func() {
 				if backoffDuration > 0 {
@@ -234,7 +238,7 @@ func (r *runner) Shutdown() {
 	log.Info("Shutting down Runner...")
 
 	for _, svc := range r.svc {
-		if svc.Status == ServiceStatusRunning {
+		if svc.Status() == ServiceStatusRunning {
 			svc.Stop()
 		}
 	}
@@ -252,7 +256,7 @@ func (r *runner) StopAllServices() {
 	defer r.mu.Unlock()
 
 	for _, svc := range r.svc {
-		if svc.Status == ServiceStatusRunning {
+		if svc.Status() == ServiceStatusRunning {
 			svc.Stop()
 		}
 	}
@@ -266,7 +270,7 @@ func (r *runner) StopService(name ...string) error {
 	defer r.mu.Unlock()
 
 	for _, n := range name {
-		if svc, ok := r.svc[n]; ok && svc.Status == ServiceStatusRunning {
+		if svc, ok := r.svc[n]; ok && svc.Status() == ServiceStatusRunning {
 			svc.StopAndWait()
 		}
 	}
@@ -281,7 +285,7 @@ func (r *runner) RestartService(name ...string) error {
 
 	for _, n := range name {
 		if svc, ok := r.svc[n]; ok {
-			if svc.Status == ServiceStatusRunning {
+			if svc.Status() == ServiceStatusRunning {
 				svc.StopAndWait()
 			}
 
@@ -298,11 +302,10 @@ func (r *runner) RestartAllServices() {
 	defer r.mu.Unlock()
 
 	for _, svc := range r.svc {
-		if svc.Status == ServiceStatusRunning {
+		if svc.Status() == ServiceStatusRunning {
 			svc.StopAndWait()
+			go svc.Start()
 		}
-
-		go svc.Start()
 	}
 }
 
@@ -316,7 +319,7 @@ func (r *runner) Status() *RunnerStatus {
 	}
 
 	for _, svc := range r.svc {
-		status.Services[svc.Name()] = svc.Status
+		status.Services[svc.Name()] = svc.Status()
 	}
 
 	return status

@@ -14,7 +14,7 @@ const (
 )
 
 // Wrapper is a wrapper around the service and its context.
-type Wrapper struct {
+type wrapper struct {
 	s Service
 
 	// preHooks are the hooks that will be executed before starting the service.
@@ -40,16 +40,10 @@ type Wrapper struct {
 	shutdownRequest atomic.Bool
 
 	// status is the current status of the service.
-	Status ServiceStatus
+	status ServiceStatus
 
 	// auto-restart related configuration.
-
-	AutoRestartEnabled         bool        // flag to indicate if auto-restart is enabled.
-	AutoRestartMaxRetries      int         // maximum number of retries.
-	AutoRestartBackoff         bool        // flag to indicate if backoff is enabled.
-	AutoRestartBackoffExponent int         // exponent for the backoff.
-	AutoRestartRetryCount      int         // current number of retries for the service.
-	AutoRestartPendingStart    atomic.Bool // flag to indicate if the service is pending for a start after the backoff.
+	autoRestart AutoRestart
 
 	// scheduling related configuration.
 
@@ -59,48 +53,69 @@ type Wrapper struct {
 	ScheduleMaxRuns        int           // maximum number of runs for the service.
 }
 
+type AutoRestart struct {
+	Enabled         bool        // flag to indicate if auto-restart is enabled.
+	MaxRetries      int         // maximum number of retries.
+	Backoff         bool        // flag to indicate if backoff is enabled.
+	BackoffExponent int         // exponent for the backoff.
+	RetryCount      int         // current number of retries for the service.
+	PendingStart    atomic.Bool // flag to indicate if the service is pending for a start after the backoff.
+}
+
 // NewWrapper returns a new instance of the service Wrapper.
-func NewWrapper(s Service, wg *sync.WaitGroup, opts ServiceOptions) *Wrapper {
-	w := &Wrapper{
-		s:                          s,
-		wg:                         wg,
-		preHooks:                   opts.PreHooks,
-		postHooks:                  opts.PostHooks,
-		Status:                     ServiceStatusRegistered,
-		AutoRestartEnabled:         opts.AutoStart.Enabled,
-		AutoRestartMaxRetries:      opts.AutoStart.MaxRetries,
-		AutoRestartBackoff:         opts.AutoStart.Backoff,
-		AutoRestartBackoffExponent: opts.AutoStart.BackOffExponent,
-		ScheduleEnabled:            opts.Schedule.Enabled,
-		ScheduleCronExpression:     opts.Schedule.Cron,
-		ScheduleTimeOut:            opts.Schedule.TimeOut,
-		ScheduleMaxRuns:            opts.Schedule.MaxRuns,
+func NewWrapper(s Service, wg *sync.WaitGroup, opts ServiceOptions) Wrapper {
+	w := &wrapper{
+		s:         s,
+		wg:        wg,
+		preHooks:  opts.PreHooks,
+		postHooks: opts.PostHooks,
+		status:    ServiceStatusRegistered,
+		autoRestart: AutoRestart{
+			RetryCount:      0,
+			Enabled:         opts.AutoStart.Enabled,
+			MaxRetries:      opts.AutoStart.MaxRetries,
+			Backoff:         opts.AutoStart.Backoff,
+			BackoffExponent: opts.AutoStart.BackOffExponent,
+			PendingStart:    atomic.Bool{},
+		},
+		ScheduleEnabled:        opts.Schedule.Enabled,
+		ScheduleCronExpression: opts.Schedule.Cron,
+		ScheduleTimeOut:        opts.Schedule.TimeOut,
+		ScheduleMaxRuns:        opts.Schedule.MaxRuns,
 	}
 
 	// sanitize the auto-restart configuration.
 
-	if w.AutoRestartMaxRetries == 0 {
-		w.AutoRestartMaxRetries = defaultMaxRetries
+	if w.autoRestart.MaxRetries == 0 {
+		w.autoRestart.MaxRetries = defaultMaxRetries
 	}
 
-	if w.AutoRestartBackoffExponent == 0 {
-		w.AutoRestartBackoffExponent = defaultBackoffExp
+	if w.autoRestart.BackoffExponent == 0 {
+		w.autoRestart.BackoffExponent = defaultBackoffExp
 	}
 
 	return w
 }
 
-func (w *Wrapper) Name() string {
+func (w *wrapper) AutoRestart() *AutoRestart {
+	return &w.autoRestart
+}
+
+func (w *wrapper) Name() string {
 	return w.s.Name()
 }
 
+func (w *wrapper) Status() ServiceStatus {
+	return w.status
+}
+
 // Done marks the services as done in the workergroup and closes the indication channel.
-func (w *Wrapper) done() {
+func (w *wrapper) done() {
 	// indicate whether the service has stopped by runner or exited on its own.
 	if w.shutdownRequest.Load() {
-		w.Status = ServiceStatusStopped
+		w.status = ServiceStatusStopped
 	} else {
-		w.Status = ServiceStatusExited
+		w.status = ServiceStatusExited
 	}
 
 	// clearing the shutdown request flag.
@@ -112,20 +127,20 @@ func (w *Wrapper) done() {
 }
 
 // Wait blocks the caller until the service is stopped.
-func (w *Wrapper) wait() {
+func (w *wrapper) wait() {
 	<-w.dic
 }
 
 // TermCh returns the termination channel for the service.
 // The service implmentation is expected to listen to this channel and
 // stop the service when it is closed.
-func (w *Wrapper) TermCh() chan struct{} {
+func (w *wrapper) TermCh() chan struct{} {
 	return w.tc
 }
 
 // reallocate the chan before starting if it is nil
-func (w *Wrapper) Start() {
-	if w.Status == ServiceStatusRunning {
+func (w *wrapper) Start() {
+	if w.status == ServiceStatusRunning {
 		log.Infof("Service %s is already running", w.s.Name())
 
 		return
@@ -141,7 +156,7 @@ func (w *Wrapper) Start() {
 	defer func() {
 		w.done() // indicate the worker group that the service has stopped.
 
-		log.Infof("service %s status [%s]", w.s.Name(), w.Status)
+		log.Infof("service %s status [%s]", w.s.Name(), w.status)
 	}()
 
 	// call the pre exec hooks
@@ -161,8 +176,8 @@ func (w *Wrapper) Start() {
 	// start the service
 	log.Infof("starting service %s ...", w.s.Name())
 
-	w.Status = ServiceStatusRunning
-	w.AutoRestartPendingStart.Store(false)
+	w.status = ServiceStatusRunning
+	w.autoRestart.PendingStart.Store(false)
 	w.s.Start(w)
 
 	// call the post exec hooks.
@@ -185,8 +200,8 @@ func (w *Wrapper) Start() {
 
 // stop stops the service. It acts like a wrapper around the service's stop method.
 // to be consumed by Stop() and StopAndWait() methods.
-func (w *Wrapper) stop() error {
-	if !(w.Status == ServiceStatusRunning) {
+func (w *wrapper) stop() error {
+	if !(w.status == ServiceStatusRunning) {
 		return ErrServiceNotRunning
 	}
 
@@ -200,14 +215,14 @@ func (w *Wrapper) stop() error {
 }
 
 // Stop stops the service.
-func (w *Wrapper) Stop() {
+func (w *wrapper) Stop() {
 	if err := w.stop(); err != nil {
 		log.Warnf("Failed to stop service %s: %v", w.s.Name(), err)
 	}
 }
 
 // StopAndWait stops the service and waits for it to exit.
-func (w *Wrapper) StopAndWait() {
+func (w *wrapper) StopAndWait() {
 	if err := w.stop(); err != nil {
 		log.Warnf("Failed to stop service %s: %v", w.s.Name(), err)
 

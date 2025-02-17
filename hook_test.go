@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-func TestNewHandler(t *testing.T) {
+func TestNewHook(t *testing.T) {
 	tests := []struct {
 		name      string
 		handlerFn func(...interface{}) error
@@ -15,6 +15,10 @@ func TestNewHandler(t *testing.T) {
 		{
 			name: "Handler executes successfully",
 			handlerFn: func(args ...interface{}) error {
+				// checking the args sequence and values
+				if len(args) != 2 || args[0] != "arg1" || args[1] != "arg2" {
+					return errors.New("unexpected args")
+				}
 				return nil
 			},
 			args:    []interface{}{"arg1", "arg2"},
@@ -23,6 +27,10 @@ func TestNewHandler(t *testing.T) {
 		{
 			name: "Handler returns error",
 			handlerFn: func(args ...interface{}) error {
+				// checking the args sequence and values
+				if len(args) != 2 || args[0] != "arg1" || args[1] != "arg2" {
+					return errors.New("unexpected args")
+				}
 				return errors.New("handler error")
 			},
 			args:    []interface{}{"arg1", "arg2"},

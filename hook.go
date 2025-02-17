@@ -1,7 +1,7 @@
 package glcm
 
-// hookHandler implements the Handler interface.
-type hookHandler struct {
+// hook implements the Hook interface.
+type hook struct {
 	f    func(...interface{}) error
 	args []interface{}
 	name string
@@ -9,7 +9,7 @@ type hookHandler struct {
 
 // NewHook returns a new instance of the Hook.
 func NewHook(name string, f func(...interface{}) error, args ...interface{}) Hook {
-	return &hookHandler{
+	return &hook{
 		f:    f,
 		args: args,
 		name: name,
@@ -17,11 +17,11 @@ func NewHook(name string, f func(...interface{}) error, args ...interface{}) Hoo
 }
 
 // Execute executes the hook method.
-func (h *hookHandler) Execute() error {
+func (h *hook) Execute() error {
 	return h.f(h.args...)
 }
 
 // Name returns the name of the hook.
-func (h *hookHandler) Name() string {
+func (h *hook) Name() string {
 	return h.name
 }
