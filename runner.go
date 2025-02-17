@@ -53,6 +53,9 @@ type runner struct {
 
 	// shutdownTimeout represents the timeout for shutting down the runner.
 	shutdownTimeout time.Duration
+
+	// shutdown is a channel to signal the shutdown of the runner.
+	shutdown chan struct{}
 }
 
 // RunnerStatus represents the status of the runner.
@@ -73,6 +76,7 @@ func NewRunner(ctx context.Context, opts RunnerOptions) Runner {
 		socketPath:      opts.SocketPath,
 		allowedUIDs:     opts.AllowedUID,
 		shutdownTimeout: opts.ShutdownTimeout,
+		shutdown:        make(chan struct{}),
 	}
 
 	if !r.verbose {
@@ -169,20 +173,23 @@ func (r *runner) BootUp() error {
 		}()
 	}
 
-	func() {
-		t := time.NewTicker(time.Second)
+	t := time.NewTicker(time.Second)
 
-		for {
-			select {
-			case <-quit:
-				return
-			case <-r.ctx.Done():
-				return
-			case <-t.C:
-				r.reconcile()
-			}
+loop:
+	for {
+		select {
+		case <-quit:
+			break loop
+		case <-r.ctx.Done():
+			break loop
+		case <-t.C:
+			r.reconcile()
+		case <-r.shutdown:
+			log.Info("Invoked shutdown. Shutting down the runner !!!")
+
+			return nil
 		}
-	}()
+	}
 
 	log.Info("Received shutdown signal !!!")
 
@@ -289,6 +296,9 @@ func (r *runner) Shutdown() {
 	}
 
 	r.isRunning = false
+
+	// close the shutdown channel to signal the exit of the runner.
+	close(r.shutdown)
 }
 
 // StopAllServices stops all the registered/running services.
