@@ -15,6 +15,10 @@ import (
 	fig "github.com/common-nighthawk/go-figure"
 )
 
+const (
+	defaultShutdownTimeout = time.Second * 30
+)
+
 // runner implements the Base interface.
 type runner struct {
 	// swg is a wait group to wait for all the services to stop.
@@ -46,6 +50,9 @@ type runner struct {
 
 	// allowedUIDs represents the allowed user ids to interact with the socket.
 	allowedUIDs []int
+
+	// shutdownTimeout represents the timeout for shutting down the runner.
+	shutdownTimeout time.Duration
 }
 
 // RunnerStatus represents the status of the runner.
@@ -57,18 +64,25 @@ type RunnerStatus struct {
 // New returns a new instance of the runner.
 func NewRunner(ctx context.Context, opts RunnerOptions) Runner {
 	r := &runner{
-		svc:         make(map[string]Wrapper),
-		mu:          &sync.Mutex{},
-		swg:         &sync.WaitGroup{},
-		ctx:         ctx,
-		verbose:     opts.Verbose,
-		hideBanner:  opts.HideBanner,
-		socketPath:  opts.SocketPath,
-		allowedUIDs: opts.AllowedUID,
+		svc:             make(map[string]Wrapper),
+		mu:              &sync.Mutex{},
+		swg:             &sync.WaitGroup{},
+		ctx:             ctx,
+		verbose:         opts.Verbose,
+		hideBanner:      opts.HideBanner,
+		socketPath:      opts.SocketPath,
+		allowedUIDs:     opts.AllowedUID,
+		shutdownTimeout: opts.ShutdownTimeout,
 	}
 
 	if !r.verbose {
 		log.SetOutput(io.Discard)
+	}
+
+	if r.shutdownTimeout == 0 {
+		log.Warn("Shutdown timeout is not set. Using the default timeout.")
+
+		r.shutdownTimeout = defaultShutdownTimeout
 	}
 
 	if r.ctx == nil {
@@ -227,7 +241,7 @@ func (r *runner) reconcile() {
 			go func() {
 				if backoffDuration > 0 {
 					log.Infof("Service %s backing-off. Restarting in %s ...", w.Name(), backoffDuration)
-					
+
 					<-time.After(backoffDuration)
 				}
 
@@ -244,17 +258,35 @@ func (r *runner) Shutdown() {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
+	ctx, cancel := context.WithTimeout(context.Background(), r.shutdownTimeout)
+	defer cancel()
+
 	log.Info("Shutting down Runner...")
 
 	for _, svc := range r.svc {
 		if svc.Status() == ServiceStatusRunning {
-			svc.Stop()
+			go func(svc Wrapper) {
+				svc.Stop()
+			}(svc)
 		}
 	}
 
-	log.Infof("Waiting for %d service(s) to stop ...", len(r.svc))
+	gracefulShutdown := make(chan struct{})
 
-	r.swg.Wait()
+	go func() {
+		log.Infof("Waiting for %d service(s) to stop ...", len(r.svc))
+
+		r.swg.Wait()
+
+		close(gracefulShutdown)
+	}()
+
+	select {
+	case <-ctx.Done():
+		log.Infof("Graceful shutdown timed out. Forcing shutdown ...")
+	case <-gracefulShutdown:
+		log.Infof("All services stopped gracefully.")
+	}
 
 	r.isRunning = false
 }
@@ -266,7 +298,9 @@ func (r *runner) StopAllServices() {
 
 	for _, svc := range r.svc {
 		if svc.Status() == ServiceStatusRunning {
-			svc.Stop()
+			go func(svc Wrapper) {
+				svc.Stop()
+			}(svc)
 		}
 	}
 
@@ -280,7 +314,9 @@ func (r *runner) StopService(name ...string) error {
 
 	for _, n := range name {
 		if svc, ok := r.svc[n]; ok && svc.Status() == ServiceStatusRunning {
-			svc.Stop()
+			go func(svc Wrapper) {
+				svc.Stop()
+			}(svc)
 		}
 	}
 
@@ -296,9 +332,8 @@ func (r *runner) RestartService(name ...string) error {
 		if svc, ok := r.svc[n]; ok {
 			if svc.Status() == ServiceStatusRunning {
 				svc.Stop()
+				go svc.Start()
 			}
-
-			go svc.Start()
 		}
 	}
 

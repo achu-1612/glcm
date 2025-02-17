@@ -66,4 +66,7 @@ type RunnerOptions struct {
 
 	// AllowedUID represents the allowed user ids to interact with the socket.
 	AllowedUID []int
+
+	// ShutdownTimeout represents the timeout for shutting down the runner.
+	ShutdownTimeout time.Duration
 }
