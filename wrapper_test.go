@@ -67,7 +67,7 @@ func TestWrapper_Start(t *testing.T) {
 				t.Errorf("Service was stopped prematurely")
 			}
 
-			w.StopAndWait()
+			w.Stop()
 
 			if !svc.stopped {
 				t.Errorf("Service was not stopped")

@@ -41,7 +41,7 @@ const (
 
 // SocketResponse represents the response from the socket.
 type SocketResponse struct {
-	Result interface{}         `json:"resulth"`
+	Result interface{}         `json:"result"`
 	Status socketCommandStatus `json:"status"`
 }
 
@@ -161,12 +161,6 @@ func (s *socket) start(done <-chan os.Signal) error {
 		return fmt.Errorf("creating socket listener: %w", err)
 	}
 
-	if err := os.Chmod(s.socketPath, 0700); err != nil {
-		_ = sock.Close()
-
-		return fmt.Errorf("setting file permission for the socket file: %w", err)
-	}
-
 	// on shutdown, close the socket and remove the socket file
 	defer func() {
 		if err := sock.Close(); err != nil {
@@ -178,32 +172,44 @@ func (s *socket) start(done <-chan os.Signal) error {
 		}
 	}()
 
+	if err := os.Chmod(s.socketPath, 0700); err != nil {
+		return fmt.Errorf("setting file permission for the socket file: %w", err)
+	}
+
 	log.Infof("Listening on %s. Permitted Access for user: %v", s.socketPath, s.allowedUID)
 
 	for {
 		select {
 		case <-done:
 			return nil
+
 		default:
-			conn, err := sock.Accept()
-			if err != nil {
-				return fmt.Errorf("accepting connection: %w", err)
-			}
+			func() {
+				conn, err := sock.Accept()
+				if err != nil {
+					log.Errorf("accepting connection: %v", err)
 
-			if err := validateSocketAccess(conn, s.allowedUID); err != nil {
-				log.Errorf("validate socket access: %v", err)
-				_ = conn.Close()
+					return
+				}
 
-				continue
-			}
+				defer func() {
+					if err := conn.Close(); err != nil {
+						log.Errorf("close connection: %v", err)
+					}
+				}()
 
-			// Not handling the command inside a go-routine.
-			// This is to ensure that the commands are executed sequentially.
-			if err := s.handler(conn); err != nil {
-				log.Errorf("handle incomfing connection: %v", err)
-			}
+				if err := validateSocketAccess(conn, s.allowedUID); err != nil {
+					log.Errorf("validate socket access: %v", err)
 
-			_ = conn.Close()
+					return
+				}
+
+				// Not handling the command inside a go-routine.
+				// This is to ensure that the commands are executed sequentially.
+				if err := s.handler(conn); err != nil {
+					log.Errorf("handle incomfing connection: %v", err)
+				}
+			}()
 		}
 	}
 }
@@ -213,7 +219,7 @@ func (s *socket) handler(conn net.Conn) error {
 
 	message, err := reader.ReadString('\n')
 	if err != nil {
-		return fmt.Errorf("failed to read message: %w", err)
+		return fmt.Errorf("reading message from socket: %w", err)
 	}
 
 	if message == "" {

@@ -50,7 +50,7 @@ func TestRegisterService(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockService := NewMockService(ctrl)
-	mockService.EXPECT().Name().Return("mockService").Return("mockService").Times(2)
+	mockService.EXPECT().Name().Return("mockService").Return("mockService").Times(4)
 
 	err = r.RegisterService(mockService, ServiceOptions{})
 	assert.Equal(t, ErrRunnerAlreadyRunning, err, "Expected error for registering service when runner is running")
@@ -118,12 +118,12 @@ func TestRestartAllServices(t *testing.T) {
 
 	mockWrapper1 := NewMockWrapper(ctrl)
 	mockWrapper1.EXPECT().Status().Return(ServiceStatusRunning).Times(1)
-	mockWrapper1.EXPECT().StopAndWait().Times(1)
+	mockWrapper1.EXPECT().Stop().Times(1)
 	mockWrapper1.EXPECT().Start().Times(1)
 
 	mockWrapper2 := NewMockWrapper(ctrl)
 	mockWrapper2.EXPECT().Status().Return(ServiceStatusRunning).Times(1)
-	mockWrapper2.EXPECT().StopAndWait().Times(1)
+	mockWrapper2.EXPECT().Stop().Times(1)
 	mockWrapper2.EXPECT().Start().Times(1)
 
 	mockWrapper3 := NewMockWrapper(ctrl)
@@ -148,7 +148,7 @@ func TestRestartService(t *testing.T) {
 
 	mockWrapper1 := NewMockWrapper(ctrl)
 	mockWrapper1.EXPECT().Status().Return(ServiceStatusRunning).Times(1)
-	mockWrapper1.EXPECT().StopAndWait().Times(1)
+	mockWrapper1.EXPECT().Stop().Times(1)
 	mockWrapper1.EXPECT().Start().Times(1)
 
 	mockWrapper2 := NewMockWrapper(ctrl)
@@ -198,7 +198,7 @@ func TestStopService(t *testing.T) {
 
 	mockWrapper1 := NewMockWrapper(ctrl)
 	mockWrapper1.EXPECT().Status().Return(ServiceStatusRunning).Times(1)
-	mockWrapper1.EXPECT().StopAndWait().Times(1)
+	mockWrapper1.EXPECT().Stop().Times(1)
 
 	mockWrapper2 := NewMockWrapper(ctrl)
 

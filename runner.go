@@ -80,7 +80,7 @@ func NewRunner(ctx context.Context, opts RunnerOptions) Runner {
 	if opts.Socket {
 		socket, err := newSocket(r, opts.SocketPath, opts.AllowedUID)
 		if err != nil {
-			log.Errorf("failed to create socket: %v", err)
+			log.Errorf("creating a socket: %v", err)
 		}
 
 		r.socket = socket
@@ -185,14 +185,20 @@ func (r *runner) reconcile() {
 	defer r.mu.Unlock()
 
 	for _, w := range r.svc {
+		log.Infof("Reconciling service: %s, current status: %s", w.Name(), w.Status())
+
 		// The services are expected to be in the registered state at first.
-		// If the service is registered, then start the service on fist rec cycle.
+		// If the service is registered, then start the service on first rec cycle.
 		if w.Status() == ServiceStatusRegistered {
+			log.Infof("Service %s is registered. Starting service ...", w.Name())
+
 			go w.Start()
 		}
 
 		// skip the service if it is already pending start.
 		if w.AutoRestart().PendingStart.Load() {
+			log.Infof("Service %s is pending start. Skipping ...", w.Name())
+
 			continue
 		}
 
@@ -221,8 +227,11 @@ func (r *runner) reconcile() {
 			go func() {
 				if backoffDuration > 0 {
 					log.Infof("Service %s backing-off. Restarting in %s ...", w.Name(), backoffDuration)
+					
 					<-time.After(backoffDuration)
 				}
+
+				log.Infof("Service %s restarting now ...", w.Name())
 
 				w.Start()
 			}()
@@ -271,7 +280,7 @@ func (r *runner) StopService(name ...string) error {
 
 	for _, n := range name {
 		if svc, ok := r.svc[n]; ok && svc.Status() == ServiceStatusRunning {
-			svc.StopAndWait()
+			svc.Stop()
 		}
 	}
 
@@ -286,7 +295,7 @@ func (r *runner) RestartService(name ...string) error {
 	for _, n := range name {
 		if svc, ok := r.svc[n]; ok {
 			if svc.Status() == ServiceStatusRunning {
-				svc.StopAndWait()
+				svc.Stop()
 			}
 
 			go svc.Start()
@@ -303,7 +312,7 @@ func (r *runner) RestartAllServices() {
 
 	for _, svc := range r.svc {
 		if svc.Status() == ServiceStatusRunning {
-			svc.StopAndWait()
+			svc.Stop()
 			go svc.Start()
 		}
 	}

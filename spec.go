@@ -78,11 +78,8 @@ type Wrapper interface {
 	// Start starts the services in the wrapper.
 	Start()
 
-	// Stop stops the service in the wrapper.
+	// Stop stops the service in the wrapper and waits for the service to stop.
 	Stop()
-
-	// StopAndWait stops the service (in the wrapper) and waits for it to stop.
-	StopAndWait()
 
 	// AutoRestart returns the auto-restart configuration for the wrapper.
 	AutoRestart() *AutoRestart
