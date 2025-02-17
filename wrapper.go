@@ -42,7 +42,7 @@ type wrapper struct {
 	// status is the current status of the service.
 	status ServiceStatus
 
-	// auto-restart related configuration.
+	// autorestart related configuration.
 	autoRestart AutoRestart
 
 	// scheduling related configuration.
@@ -53,6 +53,7 @@ type wrapper struct {
 	ScheduleMaxRuns        int           // maximum number of runs for the service.
 }
 
+// AutoRestart is the configuration set for auto-restart.
 type AutoRestart struct {
 	Enabled         bool        // flag to indicate if auto-restart is enabled.
 	MaxRetries      int         // maximum number of retries.
@@ -87,10 +88,13 @@ func NewWrapper(s Service, wg *sync.WaitGroup, opts ServiceOptions) Wrapper {
 	// sanitize the auto-restart configuration.
 
 	if w.autoRestart.MaxRetries == 0 {
+		log.Warnf("MaxRetries is not set for service %s. Setting it to default value %d", w.s.Name(), defaultMaxRetries)
+
 		w.autoRestart.MaxRetries = defaultMaxRetries
 	}
 
 	if w.autoRestart.BackoffExponent == 0 {
+		log.Warnf("BackoffExponent is not set for service %s. Setting it to default value %d", w.s.Name(), defaultBackoffExp)
 		w.autoRestart.BackoffExponent = defaultBackoffExp
 	}
 
@@ -112,6 +116,8 @@ func (w *wrapper) Status() ServiceStatus {
 // Done marks the services as done in the workergroup and closes the indication channel.
 func (w *wrapper) done() {
 	// indicate whether the service has stopped by runner or exited on its own.
+	// if the service is stopped by the runner (shudownRequest will be set to true), then the status will be stopped.
+	// if the service has exited on its own, then the status will be exited.
 	if w.shutdownRequest.Load() {
 		w.status = ServiceStatusStopped
 	} else {
@@ -154,7 +160,7 @@ func (w *wrapper) Start() {
 	w.wg.Add(1)
 
 	defer func() {
-		w.done() // indicate the worker group that the service has stopped.
+		w.done() // finalizer for the service wrapper.
 
 		log.Infof("service %s status [%s]", w.s.Name(), w.status)
 	}()
@@ -184,7 +190,6 @@ func (w *wrapper) Start() {
 	// Note: we don't really need the ignore flag here,,
 	// as there is nothing for us to do, if the post hooks fail.
 	func() {
-
 		log.Infof("Executing post-hooks for service %s ...", w.s.Name())
 
 		for _, h := range w.postHooks {
@@ -198,11 +203,10 @@ func (w *wrapper) Start() {
 	}()
 }
 
-// stop stops the service. It acts like a wrapper around the service's stop method.
-// to be consumed by Stop() and StopAndWait() methods.
-func (w *wrapper) stop() error {
+// Stop stops the service and waits for it to exit.
+func (w *wrapper) Stop() {
 	if !(w.status == ServiceStatusRunning) {
-		return ErrServiceNotRunning
+		return
 	}
 
 	log.Infof("Stopping service %s ...", w.s.Name())
@@ -210,24 +214,6 @@ func (w *wrapper) stop() error {
 	close(w.tc)
 
 	w.shutdownRequest.Store(true)
-
-	return nil
-}
-
-// Stop stops the service.
-func (w *wrapper) Stop() {
-	if err := w.stop(); err != nil {
-		log.Warnf("Failed to stop service %s: %v", w.s.Name(), err)
-	}
-}
-
-// StopAndWait stops the service and waits for it to exit.
-func (w *wrapper) StopAndWait() {
-	if err := w.stop(); err != nil {
-		log.Warnf("Failed to stop service %s: %v", w.s.Name(), err)
-
-		return
-	}
 
 	log.Infof("Waiting for the service %s to exit ...", w.s.Name())
 

@@ -387,18 +387,6 @@ func (mr *MockWrapperMockRecorder) Stop() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Stop", reflect.TypeOf((*MockWrapper)(nil).Stop))
 }
 
-// StopAndWait mocks base method.
-func (m *MockWrapper) StopAndWait() {
-	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "StopAndWait")
-}
-
-// StopAndWait indicates an expected call of StopAndWait.
-func (mr *MockWrapperMockRecorder) StopAndWait() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StopAndWait", reflect.TypeOf((*MockWrapper)(nil).StopAndWait))
-}
-
 // TermCh mocks base method.
 func (m *MockWrapper) TermCh() chan struct{} {
 	m.ctrl.T.Helper()
