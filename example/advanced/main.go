@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	"os"
+	"runtime"
 	"syscall"
 	"time"
 
@@ -71,16 +72,19 @@ func main() {
 	go func() {
 		<-time.After(time.Second * 10)
 
-		process, err := os.FindProcess(os.Getpid())
-		if err != nil {
-			log.Printf("Error finding process: %s\n", err)
-			return
-		}
+		if runtime.GOOS == "windows" {
+			base.Shutdown()
+		} else {
+			process, err := os.FindProcess(os.Getpid())
+			if err != nil {
+				log.Printf("Error finding process: %s\n", err)
+				return
+			}
 
-		if err := process.Signal(syscall.SIGTERM); err != nil {
-			log.Printf("Error sending termination signal: %s\n", err)
+			if err := process.Signal(syscall.SIGTERM); err != nil {
+				log.Printf("Error sending termination signal: %s\n", err)
+			}
 		}
-
 	}()
 
 	if err := base.BootUp(); err != nil {
