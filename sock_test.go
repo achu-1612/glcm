@@ -114,7 +114,7 @@ func TestValidateSocketAccess(t *testing.T) {
 		})
 	}
 }
-func TestRestartService(t *testing.T) {
+func TestSocketRestartService(t *testing.T) {
 	tests := []struct {
 		name      string
 		service   []string
@@ -175,7 +175,7 @@ func TestRestartService(t *testing.T) {
 	}
 }
 
-func TestStopService(t *testing.T) {
+func TestSocketStopService(t *testing.T) {
 	tests := []struct {
 		name      string
 		service   []string
@@ -236,7 +236,7 @@ func TestStopService(t *testing.T) {
 	}
 }
 
-func TestStopAllServices(t *testing.T) {
+func TestSocketStopAllServices(t *testing.T) {
 	tests := []struct {
 		name      string
 		setupMock func(mockRunner *MockRunner)
@@ -275,7 +275,7 @@ func TestStopAllServices(t *testing.T) {
 	}
 }
 
-func TestRestartAllServices(t *testing.T) {
+func TestSocketRestartAllServices(t *testing.T) {
 	tests := []struct {
 		name      string
 		setupMock func(mockRunner *MockRunner)
@@ -314,7 +314,7 @@ func TestRestartAllServices(t *testing.T) {
 	}
 }
 
-func TestServiceStatus(t *testing.T) {
+func TestSocketServiceStatus(t *testing.T) {
 	status := &RunnerStatus{
 		IsRunning: true,
 		Services: map[string]ServiceStatus{
@@ -361,7 +361,7 @@ func TestServiceStatus(t *testing.T) {
 		})
 	}
 }
-func TestHandler(t *testing.T) {
+func TestSocketHandler(t *testing.T) {
 	// status := &RunnerStatus{
 	// 	IsRunning: true,
 	// 	Services: map[string]ServiceStatus{

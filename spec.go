@@ -34,6 +34,7 @@ type Terminator interface {
 	TermCh() chan struct{}
 }
 
+// Runner represents the interface for the base runner methods.
 type Runner interface {
 	// IsRunning returns true if the runner is running, otherwise false.
 	IsRunning() bool
@@ -61,4 +62,28 @@ type Runner interface {
 
 	// Status returns the status of the runner along with the status of each registered service.
 	Status() *RunnerStatus
+}
+
+// Wrapper is an interface which represents the wraper around the service.
+type Wrapper interface {
+	// Name returns the name of the service.
+	Name() string
+
+	// Status returns the status of the service/wrapper.
+	Status() ServiceStatus
+
+	// TermCh returns the termination channel for the service.
+	TermCh() chan struct{}
+
+	// Start starts the services in the wrapper.
+	Start()
+
+	// Stop stops the service in the wrapper.
+	Stop()
+
+	// StopAndWait stops the service (in the wrapper) and waits for it to stop.
+	StopAndWait()
+
+	// AutoRestart returns the auto-restart configuration for the wrapper.
+	AutoRestart() *AutoRestart
 }

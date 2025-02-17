@@ -297,3 +297,118 @@ func (mr *MockRunnerMockRecorder) StopService(arg0 ...interface{}) *gomock.Call 
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StopService", reflect.TypeOf((*MockRunner)(nil).StopService), arg0...)
 }
+
+// MockWrapper is a mock of Wrapper interface.
+type MockWrapper struct {
+	ctrl     *gomock.Controller
+	recorder *MockWrapperMockRecorder
+}
+
+// MockWrapperMockRecorder is the mock recorder for MockWrapper.
+type MockWrapperMockRecorder struct {
+	mock *MockWrapper
+}
+
+// NewMockWrapper creates a new mock instance.
+func NewMockWrapper(ctrl *gomock.Controller) *MockWrapper {
+	mock := &MockWrapper{ctrl: ctrl}
+	mock.recorder = &MockWrapperMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockWrapper) EXPECT() *MockWrapperMockRecorder {
+	return m.recorder
+}
+
+// AutoRestart mocks base method.
+func (m *MockWrapper) AutoRestart() *AutoRestart {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "AutoRestart")
+	ret0, _ := ret[0].(*AutoRestart)
+	return ret0
+}
+
+// AutoRestart indicates an expected call of AutoRestart.
+func (mr *MockWrapperMockRecorder) AutoRestart() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AutoRestart", reflect.TypeOf((*MockWrapper)(nil).AutoRestart))
+}
+
+// Name mocks base method.
+func (m *MockWrapper) Name() string {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Name")
+	ret0, _ := ret[0].(string)
+	return ret0
+}
+
+// Name indicates an expected call of Name.
+func (mr *MockWrapperMockRecorder) Name() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Name", reflect.TypeOf((*MockWrapper)(nil).Name))
+}
+
+// Start mocks base method.
+func (m *MockWrapper) Start() {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "Start")
+}
+
+// Start indicates an expected call of Start.
+func (mr *MockWrapperMockRecorder) Start() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Start", reflect.TypeOf((*MockWrapper)(nil).Start))
+}
+
+// Status mocks base method.
+func (m *MockWrapper) Status() ServiceStatus {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Status")
+	ret0, _ := ret[0].(ServiceStatus)
+	return ret0
+}
+
+// Status indicates an expected call of Status.
+func (mr *MockWrapperMockRecorder) Status() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Status", reflect.TypeOf((*MockWrapper)(nil).Status))
+}
+
+// Stop mocks base method.
+func (m *MockWrapper) Stop() {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "Stop")
+}
+
+// Stop indicates an expected call of Stop.
+func (mr *MockWrapperMockRecorder) Stop() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Stop", reflect.TypeOf((*MockWrapper)(nil).Stop))
+}
+
+// StopAndWait mocks base method.
+func (m *MockWrapper) StopAndWait() {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "StopAndWait")
+}
+
+// StopAndWait indicates an expected call of StopAndWait.
+func (mr *MockWrapperMockRecorder) StopAndWait() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StopAndWait", reflect.TypeOf((*MockWrapper)(nil).StopAndWait))
+}
+
+// TermCh mocks base method.
+func (m *MockWrapper) TermCh() chan struct{} {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "TermCh")
+	ret0, _ := ret[0].(chan struct{})
+	return ret0
+}
+
+// TermCh indicates an expected call of TermCh.
+func (mr *MockWrapperMockRecorder) TermCh() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TermCh", reflect.TypeOf((*MockWrapper)(nil).TermCh))
+}
