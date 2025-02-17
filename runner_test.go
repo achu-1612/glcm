@@ -190,6 +190,7 @@ func TestStopAllServices(t *testing.T) {
 	}
 
 	r.StopAllServices()
+	<-time.After(time.Second * 1)
 }
 
 func TestStopService(t *testing.T) {
@@ -215,6 +216,7 @@ func TestStopService(t *testing.T) {
 	}
 
 	_ = r.StopService("mockService1", "mockService3")
+	<-time.After(time.Second * 1)
 }
 
 func TestShutdown(t *testing.T) {
