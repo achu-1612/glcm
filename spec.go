@@ -1,5 +1,7 @@
 package glcm
 
+import "time"
+
 //go:generate mockgen -package glcm -destination spec.mock.go -source spec.go -self_package "github.com/achu-1612/glcm"
 
 // Hook is an interface which represents a single hook.
@@ -86,4 +88,7 @@ type Wrapper interface {
 
 	// AutoRestart returns the auto-restart configuration for the wrapper.
 	AutoRestart() *AutoRestart
+
+	// Uptime returns the uptime of the service.
+	Uptime() time.Duration
 }

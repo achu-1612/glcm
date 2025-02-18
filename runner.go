@@ -48,12 +48,6 @@ type runner struct {
 	shutdownTimeout time.Duration
 }
 
-// RunnerStatus represents the status of the runner.
-type RunnerStatus struct {
-	IsRunning bool                     `json:"isRunning"`
-	Services  map[string]ServiceStatus `json:"services"`
-}
-
 // NewRunner returns a new instance of the runner.
 func NewRunner(ctx context.Context, opts RunnerOptions) Runner {
 	opts.Sanitize()
@@ -361,11 +355,14 @@ func (r *runner) Status() *RunnerStatus {
 
 	status := &RunnerStatus{
 		IsRunning: r.isRunning,
-		Services:  make(map[string]ServiceStatus),
+		Services:  make(map[string]ServiceInfo),
 	}
 
 	for _, svc := range r.svc {
-		status.Services[svc.Name()] = svc.Status()
+		status.Services[svc.Name()] = ServiceInfo{
+			Status: svc.Status(),
+			Uptime: svc.Uptime(),
+		}
 	}
 
 	return status

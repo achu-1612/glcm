@@ -37,6 +37,12 @@ type wrapper struct {
 	// status is the current status of the service.
 	status ServiceStatus
 
+	// startTime is the time when the service is started.
+	startTime time.Time
+
+	// uptime is the time for which the service has been running.
+	uptime time.Duration
+
 	// autorestart related configuration.
 	autoRestart AutoRestart
 
@@ -95,6 +101,14 @@ func (w *wrapper) Status() ServiceStatus {
 	return w.status
 }
 
+func (w *wrapper) Uptime() time.Duration {
+	if w.status == ServiceStatusRunning {
+		return time.Since(w.startTime)
+	}
+
+	return w.uptime
+}
+
 // Done marks the services as done in the workergroup and closes the indication channel.
 func (w *wrapper) done() {
 	// indicate whether the service has stopped by runner or exited on its own.
@@ -105,6 +119,9 @@ func (w *wrapper) done() {
 	} else {
 		w.status = ServiceStatusExited
 	}
+
+	// Record the uptime
+	w.uptime = time.Since(w.startTime)
 
 	// clearing the shutdown request flag.
 	w.shutdownRequest.Store(false)
@@ -164,6 +181,7 @@ func (w *wrapper) Start() {
 	// start the service
 	log.Infof("starting service %s ...", w.s.Name())
 
+	w.startTime = time.Now()
 	w.status = ServiceStatusRunning
 	w.autoRestart.PendingStart.Store(false)
 	w.s.Start(w)

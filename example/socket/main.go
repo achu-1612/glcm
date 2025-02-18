@@ -72,7 +72,7 @@ func main() {
 	}
 
 	go func() {
-		<-time.After(time.Second * 10)
+		<-time.After(time.Second * 60)
 
 		if runtime.GOOS == "windows" {
 			base.Shutdown()

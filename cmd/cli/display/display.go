@@ -65,16 +65,16 @@ func PrintStatus(item *glcm.SocketResponse) {
 		var f []string
 		f = append(f, prettyprint.Colorize(fmt.Sprintf("{{.Yellow}}%s{{.Default}}", k)))
 
-		switch v {
+		switch v.Status {
 		case glcm.ServiceStatusRegistered, glcm.ServiceStatusScheduled, glcm.ServiceStatusScheduledForRestart:
-			f = append(f, prettyprint.Colorize(fmt.Sprintf("{{.Blue}}%s{{.Default}}", v)))
+			f = append(f, prettyprint.Colorize(fmt.Sprintf("{{.Blue}}%s{{.Default}}", v.Status)), v.Uptime.String())
 
 		case glcm.ServiceStatusRunning:
-			f = append(f, prettyprint.Colorize(fmt.Sprintf("{{.Green}}%s{{.Default}}", v)))
+			f = append(f, prettyprint.Colorize(fmt.Sprintf("{{.Green}}%s{{.Default}}", v.Status)), v.Uptime.String())
 
 		case
 			glcm.ServiceStatusStopped, glcm.ServiceStatusExhausted, glcm.ServiceStatusExited:
-			f = append(f, prettyprint.Colorize(fmt.Sprintf("{{.Red}}%s{{.Default}}", v)))
+			f = append(f, prettyprint.Colorize(fmt.Sprintf("{{.Red}}%s{{.Default}}", v.Status)), v.Uptime.String())
 		}
 
 		_, _ = fmt.Fprintln(out, strings.Join(f, "\t"))

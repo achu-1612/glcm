@@ -109,3 +109,15 @@ func (r *RunnerOptions) Sanitize() {
 		r.SocketPath = defaultSocketPath
 	}
 }
+
+// RunnerStatus represents the status of the runner.
+type RunnerStatus struct {
+	IsRunning bool                   `json:"isRunning"`
+	Services  map[string]ServiceInfo `json:"services"`
+}
+
+// ServiceStatus represents the available information of the service.
+type ServiceInfo struct {
+	Status ServiceStatus `json:"status"`
+	Uptime time.Duration `json:"uptime"`
+}
