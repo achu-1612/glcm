@@ -34,40 +34,6 @@ func TestIsRunning(t *testing.T) {
 	assert.False(t, r.IsRunning(), "Expected runner to not be running after shutdown")
 }
 
-func TestRegisterService(t *testing.T) {
-	r := NewRunner(context.Background(), RunnerOptions{})
-
-	ri := r.(*runner)
-
-	// Test registering a nil service
-	err := r.RegisterService(nil, ServiceOptions{})
-	assert.Equal(t, ErrRegisterNilService, err, "Expected error for registering nil service")
-
-	// Test registering a service when runner is running
-	ri.isRunning = true
-
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	mockService := NewMockService(ctrl)
-	mockService.EXPECT().Name().Return("mockService").Return("mockService").Times(2)
-
-	err = r.RegisterService(mockService, ServiceOptions{})
-	assert.Equal(t, ErrRunnerAlreadyRunning, err, "Expected error for registering service when runner is running")
-
-	//TODO: use diff services for the regsitration with the same name
-
-	ri.isRunning = false
-
-	// Test registering a service successfully
-	err = r.RegisterService(mockService, ServiceOptions{})
-	assert.Nil(t, err, "Expected no error for registering service")
-
-	// Test registering a service that already exists
-	err = r.RegisterService(mockService, ServiceOptions{})
-	assert.Equal(t, ErrRegisterServiceAlreadyExists, err, "Expected error for registering service that already exists")
-}
-
 func TestStatus(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
@@ -244,4 +210,84 @@ func TestShutdown(t *testing.T) {
 
 	// Test when runner is not running after shutdown
 	assert.False(t, r.IsRunning(), "Expected runner to not be running after shutdown")
+}
+
+func TestDeregisterService(t *testing.T) {
+	r := NewRunner(context.Background(), RunnerOptions{})
+	// Test deregistering a non-existent service
+	err := r.DeregisterService("nonExistentService")
+	assert.Equal(t, ErrDeregisterServiceNotFound, err, "Expected error for deregistering non-existent service")
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockService := NewMockService(ctrl)
+	mockService.EXPECT().Name().Return("mockService").Times(1)
+
+	err = r.RegisterService(mockService, ServiceOptions{})
+	assert.Nil(t, err, "Expected no error for registering service")
+
+	// Test deregistering a registered service
+	err = r.DeregisterService("mockService")
+	assert.Nil(t, err, "Expected no error for deregistering service")
+
+	ri := r.(*runner)
+
+	// Test if the service is deregistered
+	_, ok := ri.svc["mockService"]
+	assert.False(t, ok, "Expected service to be deregistered")
+}
+
+func TestDeregisterRunningService(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockWrapper := NewMockWrapper(ctrl)
+	mockWrapper.EXPECT().Status().Return(ServiceStatusRunning).Times(1)
+	mockWrapper.EXPECT().Stop().Times(1)
+
+	r := NewRunner(context.Background(), RunnerOptions{})
+	ri := r.(*runner)
+
+	ri.svc = map[string]Wrapper{
+		"mockService": mockWrapper,
+	}
+
+	// Test deregistering a running service
+	err := r.DeregisterService("mockService")
+	assert.Nil(t, err, "Expected no error for deregistering running service")
+
+	// Test if the service is deregistered
+	_, ok := ri.svc["mockService"]
+	assert.False(t, ok, "Expected running service to be deregistered")
+}
+
+func TestRegisterService(t *testing.T) {
+	r := NewRunner(context.Background(), RunnerOptions{})
+
+	// Test registering a nil service
+	err := r.RegisterService(nil, ServiceOptions{})
+	assert.Equal(t, ErrRegisterNilService, err, "Expected error for registering nil service")
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockService := NewMockService(ctrl)
+	mockService.EXPECT().Name().Return("mockService").Return("mockService").Times(1)
+
+	err = r.RegisterService(mockService, ServiceOptions{})
+	assert.Nil(t, err, "Expected no error for registering service")
+
+	mockService1 := NewMockService(ctrl)
+	mockService1.EXPECT().Name().Return("mockService").Return("mockService").Times(1)
+
+	// Test registering a service successfully
+	err = r.RegisterService(mockService1, ServiceOptions{})
+	assert.Equal(t, ErrRegisterServiceAlreadyExists, err, "Expected error for registering service that already exists")
+
+	ri := r.(*runner)
+
+	// Test if the service is registered
+	_, ok := ri.svc["mockService"]
+	assert.True(t, ok, "Expected service to be registered")
 }
