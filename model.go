@@ -118,6 +118,7 @@ type RunnerStatus struct {
 
 // ServiceStatus represents the available information of the service.
 type ServiceInfo struct {
-	Status ServiceStatus `json:"status"`
-	Uptime time.Duration `json:"uptime"`
+	Status   ServiceStatus `json:"status"`
+	Uptime   time.Duration `json:"uptime"`
+	Restarts int           `json:"restarts"`
 }

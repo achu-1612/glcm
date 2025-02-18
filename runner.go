@@ -360,8 +360,9 @@ func (r *runner) Status() *RunnerStatus {
 
 	for _, svc := range r.svc {
 		status.Services[svc.Name()] = ServiceInfo{
-			Status: svc.Status(),
-			Uptime: svc.Uptime(),
+			Status:   svc.Status(),
+			Uptime:   svc.Uptime(),
+			Restarts: svc.AutoRestart().RetryCount,
 		}
 	}
 
