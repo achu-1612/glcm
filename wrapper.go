@@ -8,11 +8,6 @@ import (
 	"github.com/achu-1612/glcm/log"
 )
 
-const (
-	defaultMaxRetries = 10
-	defaultBackoffExp = 2
-)
-
 // Wrapper is a wrapper around the service and its context.
 type wrapper struct {
 	s Service
@@ -83,19 +78,6 @@ func NewWrapper(s Service, wg *sync.WaitGroup, opts ServiceOptions) Wrapper {
 		ScheduleCronExpression: opts.Schedule.Cron,
 		ScheduleTimeOut:        opts.Schedule.TimeOut,
 		ScheduleMaxRuns:        opts.Schedule.MaxRuns,
-	}
-
-	// sanitize the auto-restart configuration.
-
-	if w.autoRestart.MaxRetries == 0 {
-		log.Warnf("MaxRetries is not set for service %s. Setting it to default value %d", w.s.Name(), defaultMaxRetries)
-
-		w.autoRestart.MaxRetries = defaultMaxRetries
-	}
-
-	if w.autoRestart.BackoffExponent == 0 {
-		log.Warnf("BackoffExponent is not set for service %s. Setting it to default value %d", w.s.Name(), defaultBackoffExp)
-		w.autoRestart.BackoffExponent = defaultBackoffExp
 	}
 
 	return w

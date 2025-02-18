@@ -15,10 +15,6 @@ import (
 	fig "github.com/common-nighthawk/go-figure"
 )
 
-const (
-	defaultShutdownTimeout = time.Second * 30
-)
-
 // runner implements the Base interface.
 type runner struct {
 	// swg is a wait group to wait for all the services to stop.
@@ -39,9 +35,6 @@ type runner struct {
 	// hideBanner is a flag to indicate if the banner should be hidden or not.
 	hideBanner bool
 
-	// verbose represents if the logs should be suppressed or not.
-	verbose bool
-
 	// socket holds the object of the socket.
 	socket *socket
 
@@ -53,9 +46,6 @@ type runner struct {
 
 	// shutdownTimeout represents the timeout for shutting down the runner.
 	shutdownTimeout time.Duration
-
-	// shutdown is a channel to signal the shutdown of the runner.
-	shutdown chan struct{}
 }
 
 // RunnerStatus represents the status of the runner.
@@ -64,32 +54,26 @@ type RunnerStatus struct {
 	Services  map[string]ServiceStatus `json:"services"`
 }
 
-// New returns a new instance of the runner.
+// NewRunner returns a new instance of the runner.
 func NewRunner(ctx context.Context, opts RunnerOptions) Runner {
+	opts.Sanitize()
+
 	r := &runner{
 		svc:             make(map[string]Wrapper),
 		mu:              &sync.Mutex{},
 		swg:             &sync.WaitGroup{},
 		ctx:             ctx,
-		verbose:         opts.Verbose,
 		hideBanner:      opts.HideBanner,
 		socketPath:      opts.SocketPath,
 		allowedUIDs:     opts.AllowedUID,
 		shutdownTimeout: opts.ShutdownTimeout,
-		shutdown:        make(chan struct{}),
 	}
 
-	if !r.verbose {
+	if opts.Verbose {
 		log.SetOutput(io.Discard)
 	}
 
-	if r.shutdownTimeout == 0 {
-		log.Warn("Shutdown timeout is not set. Using the default timeout.")
-
-		r.shutdownTimeout = defaultShutdownTimeout
-	}
-
-	if r.ctx == nil {
+	if ctx == nil {
 		log.Warn("Base Context is empty. Using the background context.")
 
 		r.ctx = context.Background()
@@ -103,8 +87,6 @@ func NewRunner(ctx context.Context, opts RunnerOptions) Runner {
 
 		r.socket = socket
 	}
-
-	log.Infof("%v", r)
 
 	return r
 }
@@ -136,6 +118,8 @@ func (r *runner) RegisterService(svc Service, opts ServiceOptions) error {
 		return ErrRegisterServiceAlreadyExists
 	}
 
+	opts.Sanitize()
+
 	r.svc[sName] = NewWrapper(svc, r.swg, opts)
 
 	return nil
@@ -161,43 +145,36 @@ func (r *runner) BootUp() error {
 		syscall.SIGTERM, syscall.SIGINT,
 		syscall.SIGQUIT, syscall.SIGHUP)
 
-	// TODO: run the reconciler only if there is service state change.
-
 	if r.socket != nil {
 		// start the socket inside a go-routine, as Start is a blocking call.,
 		// it will be shutdown automatically when we receive the signal.
 		go func() {
-			if err := r.socket.start(quit); err != nil {
+			if err := r.socket.start(); err != nil {
 				log.Errorf("failed to start socket: %v", err)
 			}
 		}()
+
+		defer r.socket.shutdown()
 	}
 
 	t := time.NewTicker(time.Second)
 
-loop:
 	for {
 		select {
 		case <-quit:
-			break loop
-		case <-r.ctx.Done():
-			break loop
-		case <-t.C:
-			r.reconcile()
-		case <-r.shutdown:
-			log.Info("Invoked shutdown. Shutting down the runner !!!")
+			log.Info("Received shutdown signal. Shutting down the runner ...")
+			r.Shutdown()
 
 			return nil
+		case <-r.ctx.Done():
+			log.Info("Received shutdown signal. Shutting down the runner ...")
+			r.Shutdown()
+
+			return nil
+		case <-t.C:
+			r.reconcile()
 		}
 	}
-
-	log.Info("Received shutdown signal !!!")
-
-	r.Shutdown()
-
-	log.Info("All services stopped. Exiting ...")
-
-	return nil
 }
 
 // reconcile takes necessary actions on the services based on their state.
@@ -265,6 +242,10 @@ func (r *runner) Shutdown() {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
+	if !r.isRunning {
+		log.Warn("Runner is not running. Skipping shutdown ...")
+	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), r.shutdownTimeout)
 	defer cancel()
 
@@ -296,9 +277,6 @@ func (r *runner) Shutdown() {
 	}
 
 	r.isRunning = false
-
-	// close the shutdown channel to signal the exit of the runner.
-	close(r.shutdown)
 }
 
 // StopAllServices stops all the registered/running services.

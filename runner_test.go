@@ -50,10 +50,12 @@ func TestRegisterService(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockService := NewMockService(ctrl)
-	mockService.EXPECT().Name().Return("mockService").Return("mockService").Times(4)
+	mockService.EXPECT().Name().Return("mockService").Return("mockService").Times(2)
 
 	err = r.RegisterService(mockService, ServiceOptions{})
 	assert.Equal(t, ErrRunnerAlreadyRunning, err, "Expected error for registering service when runner is running")
+
+	//TODO: use diff services for the regsitration with the same name
 
 	ri.isRunning = false
 
