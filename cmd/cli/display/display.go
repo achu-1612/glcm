@@ -9,7 +9,6 @@ import (
 	"text/tabwriter"
 
 	"github.com/achu-1612/glcm"
-	"github.com/deis/deis/pkg/prettyprint"
 )
 
 var Emitter io.Writer = os.Stdout
@@ -25,21 +24,19 @@ func Printf(r *glcm.SocketResponse) {
 
 // Errorf prints default text to std out.
 func Errorf(format string, a ...interface{}) {
-	format = prettyprint.Colorize(fmt.Sprintf("{{.Red}}%s{{.Default}}", format))
-	msg := fmt.Sprintf(format, a...)
+	msg := fmt.Sprintf("\033[31m"+format+"\033[0m", a...)
 	fmt.Fprintf(Emitter, "%s", msg)
 }
 
 // Successf prints default text to std out.
 func Successf(format string, a ...interface{}) {
-	format = prettyprint.Colorize(fmt.Sprintf("{{.Green}}%s{{.Default}}", format))
-	fmt.Fprintf(Emitter, format, a...)
+	msg := fmt.Sprintf("\033[32m"+format+"\033[0m", a...)
+	fmt.Fprintf(Emitter, "%s", msg)
 }
 
 // Fatalf prints default text to std out and os.Exit(1).
 func Fatalf(format string, a ...interface{}) {
-	format = prettyprint.Colorize(fmt.Sprintf("{{.Red}}%s{{.Default}}", format))
-	msg := fmt.Sprintf(format, a...)
+	msg := fmt.Sprintf("\033[31m"+format+"\033[0m", a...)
 	fmt.Fprintf(Emitter, "%s", msg)
 	os.Exit(1)
 }

@@ -13,6 +13,22 @@ const (
 	defaultBackoffExp      = 2
 )
 
+const (
+	banner = `
+      ___           ___       ___           ___
+     /\  \         /\__\     /\  \         /\__\
+    /::\  \       /:/  /    /::\  \       /::|  |
+   /:/\:\  \     /:/  /    /:/\:\  \     /:|:|  |
+  /:/  \:\  \   /:/  /    /:/  \:\  \   /:/|:|__|__
+ /:/__/_\:\__\ /:/__/    /:/__/ \:\__\ /:/ |::::\__\
+ \:\  /\ \/__/ \:\  \    \:\  \  \/__/ \/__/~~/:/  /
+  \:\ \:\__\    \:\  \    \:\  \             /:/  /
+   \:\/:/  /     \:\  \    \:\  \           /:/  /
+    \::/  /       \:\__\    \:\__\         /:/  /
+     \/__/         \/__/     \/__/         \/__/	
+	`
+)
+
 // ServiceOptions represents the options for a service.
 type ServiceOptions struct {
 	// PreHooks are the hooks that are executed before the service is started.

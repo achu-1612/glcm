@@ -11,8 +11,6 @@ import (
 	"time"
 
 	"github.com/achu-1612/glcm/log"
-
-	fig "github.com/common-nighthawk/go-figure"
 )
 
 // runner implements the Base interface.
@@ -142,7 +140,7 @@ func (r *runner) BootUp() error {
 	}
 
 	if !r.hideBanner {
-		fig.NewColorFigure("GLCM", "isometric1", "green", true).Print()
+		os.Stdout.Write([]byte(banner + "\n"))
 	}
 
 	log.Info("Booting up the Runner ...")
