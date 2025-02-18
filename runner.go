@@ -105,10 +105,6 @@ func (r *runner) RegisterService(svc Service, opts ServiceOptions) error {
 		return ErrRegisterNilService
 	}
 
-	if r.IsRunning() {
-		return ErrRunnerAlreadyRunning
-	}
-
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -121,6 +117,26 @@ func (r *runner) RegisterService(svc Service, opts ServiceOptions) error {
 	opts.Sanitize()
 
 	r.svc[sName] = NewWrapper(svc, r.swg, opts)
+
+	return nil
+}
+
+// DeregisterService deregisters a service from the runner.
+// If the service is running, it will be stopped before deregistering.
+func (r *runner) DeregisterService(name string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	if _, ok := r.svc[name]; !ok {
+		return ErrDeregisterServiceNotFound
+	}
+
+	// stop the service if it is running.
+	if r.svc[name].Status() == ServiceStatusRunning {
+		r.svc[name].Stop()
+	}
+
+	delete(r.svc, name)
 
 	return nil
 }
@@ -302,9 +318,7 @@ func (r *runner) StopService(name ...string) error {
 
 	for _, n := range name {
 		if svc, ok := r.svc[n]; ok && svc.Status() == ServiceStatusRunning {
-			go func(svc Wrapper) {
-				svc.Stop()
-			}(svc)
+			svc.Stop()
 		}
 	}
 

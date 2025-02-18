@@ -42,6 +42,9 @@ type Runner interface {
 	// RegisterService registers a service with the runner.
 	RegisterService(Service, ServiceOptions) error
 
+	// DeregisterService deregisters a service from the runner.
+	DeregisterService(string) error
+
 	// Shutdown stops all the services and the runner.
 	Shutdown()
 

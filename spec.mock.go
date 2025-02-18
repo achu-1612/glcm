@@ -184,6 +184,20 @@ func (mr *MockRunnerMockRecorder) BootUp() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BootUp", reflect.TypeOf((*MockRunner)(nil).BootUp))
 }
 
+// DeregisterService mocks base method.
+func (m *MockRunner) DeregisterService(arg0 string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeregisterService", arg0)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeregisterService indicates an expected call of DeregisterService.
+func (mr *MockRunnerMockRecorder) DeregisterService(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeregisterService", reflect.TypeOf((*MockRunner)(nil).DeregisterService), arg0)
+}
+
 // IsRunning mocks base method.
 func (m *MockRunner) IsRunning() bool {
 	m.ctrl.T.Helper()
