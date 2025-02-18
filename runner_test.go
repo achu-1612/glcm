@@ -55,9 +55,17 @@ func TestStatus(t *testing.T) {
 	assert.Nil(t, err, "Expected no error for registering service")
 
 	status := r.Status()
+
+	// drain the uptime for all services
+	for k := range status.Services {
+		x := status.Services[k]
+		x.Uptime = 0
+		status.Services[k] = x
+	}
+
 	assert.False(t, status.IsRunning, "Expected runner to not be running")
-	assert.Equal(t, ServiceStatusRegistered, status.Services["mockService1"], "Expected mockService1 to be registered")
-	assert.Equal(t, ServiceStatusRegistered, status.Services["mockService2"], "Expected mockService2 to be registered")
+	assert.Equal(t, ServiceInfo{Status: ServiceStatusRegistered, Uptime: 0, Restarts: 0}, status.Services["mockService1"], "Expected mockService1 to be registered")
+	assert.Equal(t, ServiceInfo{Status: ServiceStatusRegistered, Uptime: 0, Restarts: 0}, status.Services["mockService2"], "Expected mockService2 to be registered")
 
 	// Start the runner
 	go func() {
@@ -69,10 +77,18 @@ func TestStatus(t *testing.T) {
 	<-time.After(time.Second * 3)
 
 	status = r.Status()
+
+	// drain the uptime for all services
+	for k := range status.Services {
+		x := status.Services[k]
+		x.Uptime = 0
+		status.Services[k] = x
+	}
+
 	assert.True(t, status.IsRunning, "Expected runner to be running")
 	// As we are using mock services, the status of the services will be exited once they are started.
-	assert.Equal(t, ServiceStatusExited, status.Services["mockService1"], "Expected mockService1 to be exited")
-	assert.Equal(t, ServiceStatusExited, status.Services["mockService2"], "Expected mockService2 to be exited")
+	assert.Equal(t, ServiceInfo{Status: ServiceStatusExited, Uptime: 0, Restarts: 0}, status.Services["mockService1"], "Expected mockService1 to be exited")
+	assert.Equal(t, ServiceInfo{Status: ServiceStatusExited, Uptime: 0, Restarts: 0}, status.Services["mockService2"], "Expected mockService2 to be exited")
 
 	// Shutdown the runner
 	r.Shutdown()

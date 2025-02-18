@@ -6,6 +6,7 @@ package glcm
 
 import (
 	reflect "reflect"
+	time "time"
 
 	gomock "github.com/golang/mock/gomock"
 )
@@ -413,4 +414,18 @@ func (m *MockWrapper) TermCh() chan struct{} {
 func (mr *MockWrapperMockRecorder) TermCh() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TermCh", reflect.TypeOf((*MockWrapper)(nil).TermCh))
+}
+
+// Uptime mocks base method.
+func (m *MockWrapper) Uptime() time.Duration {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Uptime")
+	ret0, _ := ret[0].(time.Duration)
+	return ret0
+}
+
+// Uptime indicates an expected call of Uptime.
+func (mr *MockWrapperMockRecorder) Uptime() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Uptime", reflect.TypeOf((*MockWrapper)(nil).Uptime))
 }

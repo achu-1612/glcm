@@ -11,8 +11,6 @@ import (
 	"time"
 
 	"github.com/achu-1612/glcm/log"
-
-	fig "github.com/common-nighthawk/go-figure"
 )
 
 // runner implements the Base interface.
@@ -46,12 +44,6 @@ type runner struct {
 
 	// shutdownTimeout represents the timeout for shutting down the runner.
 	shutdownTimeout time.Duration
-}
-
-// RunnerStatus represents the status of the runner.
-type RunnerStatus struct {
-	IsRunning bool                     `json:"isRunning"`
-	Services  map[string]ServiceStatus `json:"services"`
 }
 
 // NewRunner returns a new instance of the runner.
@@ -148,7 +140,7 @@ func (r *runner) BootUp() error {
 	}
 
 	if !r.hideBanner {
-		fig.NewColorFigure("GLCM", "isometric1", "green", true).Print()
+		os.Stdout.Write([]byte(banner + "\n"))
 	}
 
 	log.Info("Booting up the Runner ...")
@@ -361,11 +353,15 @@ func (r *runner) Status() *RunnerStatus {
 
 	status := &RunnerStatus{
 		IsRunning: r.isRunning,
-		Services:  make(map[string]ServiceStatus),
+		Services:  make(map[string]ServiceInfo),
 	}
 
 	for _, svc := range r.svc {
-		status.Services[svc.Name()] = svc.Status()
+		status.Services[svc.Name()] = ServiceInfo{
+			Status:   svc.Status(),
+			Uptime:   svc.Uptime(),
+			Restarts: svc.AutoRestart().RetryCount,
+		}
 	}
 
 	return status

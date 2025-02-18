@@ -317,8 +317,10 @@ func TestSocketRestartAllServices(t *testing.T) {
 func TestSocketServiceStatus(t *testing.T) {
 	status := &RunnerStatus{
 		IsRunning: true,
-		Services: map[string]ServiceStatus{
-			"service1": ServiceStatusRunning,
+		Services: map[string]ServiceInfo{
+			"service1": {
+				Status: ServiceStatusRunning,
+			},
 		},
 	}
 

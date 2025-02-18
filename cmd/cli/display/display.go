@@ -9,7 +9,6 @@ import (
 	"text/tabwriter"
 
 	"github.com/achu-1612/glcm"
-	"github.com/deis/deis/pkg/prettyprint"
 )
 
 var Emitter io.Writer = os.Stdout
@@ -25,21 +24,19 @@ func Printf(r *glcm.SocketResponse) {
 
 // Errorf prints default text to std out.
 func Errorf(format string, a ...interface{}) {
-	format = prettyprint.Colorize(fmt.Sprintf("{{.Red}}%s{{.Default}}", format))
-	msg := fmt.Sprintf(format, a...)
+	msg := fmt.Sprintf("\033[31m"+format+"\033[0m", a...)
 	fmt.Fprintf(Emitter, "%s", msg)
 }
 
 // Successf prints default text to std out.
 func Successf(format string, a ...interface{}) {
-	format = prettyprint.Colorize(fmt.Sprintf("{{.Green}}%s{{.Default}}", format))
-	fmt.Fprintf(Emitter, format, a...)
+	msg := fmt.Sprintf("\033[32m"+format+"\033[0m", a...)
+	fmt.Fprintf(Emitter, "%s", msg)
 }
 
 // Fatalf prints default text to std out and os.Exit(1).
 func Fatalf(format string, a ...interface{}) {
-	format = prettyprint.Colorize(fmt.Sprintf("{{.Red}}%s{{.Default}}", format))
-	msg := fmt.Sprintf(format, a...)
+	msg := fmt.Sprintf("\033[31m"+format+"\033[0m", a...)
 	fmt.Fprintf(Emitter, "%s", msg)
 	os.Exit(1)
 }
@@ -49,6 +46,9 @@ func PrintStatus(item *glcm.SocketResponse) {
 
 	out := new(tabwriter.Writer)
 	out.Init(Emitter, 0, 8, 1, '\t', 0)
+
+	cols := strings.Split("Name,Status,Uptime,Restarts", ",")
+	_, _ = fmt.Fprintln(out, strings.ToUpper(strings.Join(cols, "\t")))
 
 	data := &glcm.RunnerStatus{}
 
@@ -61,21 +61,15 @@ func PrintStatus(item *glcm.SocketResponse) {
 		Fatalf("Unable to unmarshal data, error: %v", err)
 	}
 
-	for k, v := range data.Services {
+	for name, info := range data.Services {
 		var f []string
-		f = append(f, prettyprint.Colorize(fmt.Sprintf("{{.Yellow}}%s{{.Default}}", k)))
-
-		switch v {
-		case glcm.ServiceStatusRegistered, glcm.ServiceStatusScheduled, glcm.ServiceStatusScheduledForRestart:
-			f = append(f, prettyprint.Colorize(fmt.Sprintf("{{.Blue}}%s{{.Default}}", v)))
-
-		case glcm.ServiceStatusRunning:
-			f = append(f, prettyprint.Colorize(fmt.Sprintf("{{.Green}}%s{{.Default}}", v)))
-
-		case
-			glcm.ServiceStatusStopped, glcm.ServiceStatusExhausted, glcm.ServiceStatusExited:
-			f = append(f, prettyprint.Colorize(fmt.Sprintf("{{.Red}}%s{{.Default}}", v)))
-		}
+		f = append(
+			f,
+			name,
+			string(info.Status),
+			fmt.Sprintf("%02dh:%02dm:%02ds", int(info.Uptime.Hours()), int(info.Uptime.Minutes())%60, int(info.Uptime.Seconds())%60),
+			fmt.Sprintf("%d", info.Restarts),
+		)
 
 		_, _ = fmt.Fprintln(out, strings.Join(f, "\t"))
 	}

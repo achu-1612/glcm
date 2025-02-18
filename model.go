@@ -13,6 +13,22 @@ const (
 	defaultBackoffExp      = 2
 )
 
+const (
+	banner = `
+      ___           ___       ___           ___
+     /\  \         /\__\     /\  \         /\__\
+    /::\  \       /:/  /    /::\  \       /::|  |
+   /:/\:\  \     /:/  /    /:/\:\  \     /:|:|  |
+  /:/  \:\  \   /:/  /    /:/  \:\  \   /:/|:|__|__
+ /:/__/_\:\__\ /:/__/    /:/__/ \:\__\ /:/ |::::\__\
+ \:\  /\ \/__/ \:\  \    \:\  \  \/__/ \/__/~~/:/  /
+  \:\ \:\__\    \:\  \    \:\  \             /:/  /
+   \:\/:/  /     \:\  \    \:\  \           /:/  /
+    \::/  /       \:\__\    \:\__\         /:/  /
+     \/__/         \/__/     \/__/         \/__/	
+	`
+)
+
 // ServiceOptions represents the options for a service.
 type ServiceOptions struct {
 	// PreHooks are the hooks that are executed before the service is started.
@@ -108,4 +124,17 @@ func (r *RunnerOptions) Sanitize() {
 
 		r.SocketPath = defaultSocketPath
 	}
+}
+
+// RunnerStatus represents the status of the runner.
+type RunnerStatus struct {
+	IsRunning bool                   `json:"isRunning"`
+	Services  map[string]ServiceInfo `json:"services"`
+}
+
+// ServiceStatus represents the available information of the service.
+type ServiceInfo struct {
+	Status   ServiceStatus `json:"status"`
+	Uptime   time.Duration `json:"uptime"`
+	Restarts int           `json:"restarts"`
 }
