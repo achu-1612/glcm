@@ -8,13 +8,11 @@ import (
 	"os"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/achu-1612/glcm/log"
 )
 
-const (
-	defaultSocketPath = "/tmp/glcm.sock"
-)
 
 // socketAction is a type for socket actions.
 type socketAction string
@@ -26,8 +24,6 @@ const (
 	SocketActionRestartAll      socketAction = "restartAll"
 	SocketActionRestartService  socketAction = "restart"
 	SocketActionStatus          socketAction = "status"
-	// socketActionBootup          socketAction = "bootup"
-	// socketActionShutdown        socketAction = "shutdown"
 )
 
 // socketCommandStatus is a type for socket action status.
@@ -45,6 +41,15 @@ type SocketResponse struct {
 	Status socketCommandStatus `json:"status"`
 }
 
+// socket implements basic socket operations
+type socket struct {
+	r          Runner
+	allowedUID []int
+	socketPath string
+	shutdownCh chan struct{}
+	doneCh     chan struct{}
+}
+
 // newSocket returns a new instance of the socket.
 func newSocket(
 	r Runner,
@@ -55,16 +60,11 @@ func newSocket(
 		r:          r,
 		socketPath: socketPath,
 		allowedUID: allowedUIDs,
+		shutdownCh: make(chan struct{}),
+		doneCh:     make(chan struct{}),
 	}
 
 	return s, nil
-}
-
-// socket implements basic socket operations
-type socket struct {
-	r          Runner
-	allowedUID []int
-	socketPath string
 }
 
 // stopService stops the service with the given name(s).
@@ -139,10 +139,25 @@ func (s *socket) status() *SocketResponse {
 	}
 }
 
+// func (s *socket) shutdownRunner() *SocketResponse {
+// 	s.r.Shutdown()
+// 	return &SocketResponse{
+// 		Result: "Shutting down the runner",
+// 		Status: Success,
+// 	}
+// }
+
+// shutdown stops the socket server.
+// Note: This is a blocking call. It will wait for the server to stop.
+func (s *socket) shutdown() {
+	close(s.shutdownCh)
+	<-s.doneCh // wait for the socket to stop
+}
+
 // start starts the socket server.
-// Note: This will be a blocking call. Once the quit signal is received,
-// the server will be stopped and the docker file will be cleaned up
-func (s *socket) start(done <-chan os.Signal) error {
+// Note: This will be a blocking call. Once the shutdown on the socket is called,
+// the server will be stopped and the socket file will be removed.
+func (s *socket) start() error {
 	if s.socketPath == "" {
 		s.socketPath = defaultSocketPath
 
@@ -162,55 +177,61 @@ func (s *socket) start(done <-chan os.Signal) error {
 	}
 
 	// on shutdown, close the socket and remove the socket file
-	defer func() {
+	go func() {
+		<-s.shutdownCh
+
+		log.Info("Closing the socket listener")
+
 		if err := sock.Close(); err != nil {
-			log.Errorf("close socket: %v", err)
+			log.Errorf("Close socket listener: %v", err)
 		}
+
+		log.Info("Removing socket file")
 
 		if err := os.Remove(s.socketPath); err != nil {
-			log.Errorf("remove socket file: %v", err)
+			log.Errorf("Remove socket file: %v", err)
 		}
+
+		log.Info("Socket closed and file removed")
+
+		close(s.doneCh) // notifiy the shutdown call that the socket is closed.
 	}()
 
-	if err := os.Chmod(s.socketPath, 0700); err != nil {
-		return fmt.Errorf("setting file permission for the socket file: %w", err)
+	if err := os.Chmod(s.socketPath, 0600); err != nil {
+		return fmt.Errorf("setting file permission for the socket file: %v", err)
 	}
 
 	log.Infof("Listening on %s. Permitted Access for user: %v", s.socketPath, s.allowedUID)
 
 	for {
-		select {
-		case <-done:
-			return nil
+		conn, err := sock.Accept()
+		if err != nil {
+			select {
+			case <-s.shutdownCh:
+				return nil
+			default:
+				log.Errorf("Accepting connection: %v", err)
+				<-time.After(time.Second * 5)
+				continue
+			}
+		}
 
-		default:
-			func() {
-				conn, err := sock.Accept()
-				if err != nil {
-					log.Errorf("accepting connection: %v", err)
-
-					return
-				}
-
-				defer func() {
-					if err := conn.Close(); err != nil {
-						log.Errorf("close connection: %v", err)
-					}
-				}()
-
-				if err := validateSocketAccess(conn, s.allowedUID); err != nil {
-					log.Errorf("validate socket access: %v", err)
-
-					return
-				}
-
-				// Not handling the command inside a go-routine.
-				// This is to ensure that the commands are executed sequentially.
-				if err := s.handler(conn); err != nil {
-					log.Errorf("handle incomfing connection: %v", err)
+		go func(conn net.Conn) {
+			defer func() {
+				if err := conn.Close(); err != nil {
+					log.Errorf("Close connection: %v", err)
 				}
 			}()
-		}
+
+			if err := validateSocketAccess(conn, s.allowedUID); err != nil {
+				log.Errorf("Validate socket access: %v", err)
+				return
+			}
+
+			if err := s.handler(conn); err != nil {
+				log.Errorf("Handle incoming connection: %v", err)
+			}
+		}(conn)
 	}
 }
 
@@ -237,7 +258,7 @@ func (s *socket) handler(conn net.Conn) error {
 		args[i] = strings.TrimSpace(args[i])
 	}
 
-	log.Infof("received command: %s with args: %v", command, args)
+	log.Infof("Received command: %s with args: %v", command, args)
 
 	var res *SocketResponse
 

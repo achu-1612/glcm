@@ -26,3 +26,4 @@ examples:
 	go run example/restart/main.go
 	go run example/advanced/main.go
 	go run example/auto-restart/main.go
+	go run example/socket/main.go
