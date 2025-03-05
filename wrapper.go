@@ -52,6 +52,8 @@ type wrapper struct {
 	ScheduleCronExpression string        // cron expression for scheduling the service.
 	ScheduleTimeOut        time.Duration // execution timeout for the service.
 	ScheduleMaxRuns        int           // maximum number of runs for the service.
+
+	mu *sync.Mutex
 }
 
 // AutoRestart is the configuration set for auto-restart.
@@ -84,6 +86,7 @@ func NewWrapper(s Service, wg *sync.WaitGroup, opts ServiceOptions) Wrapper {
 		ScheduleCronExpression: opts.Schedule.Cron,
 		ScheduleTimeOut:        opts.Schedule.TimeOut,
 		ScheduleMaxRuns:        opts.Schedule.MaxRuns,
+		mu:                     &sync.Mutex{},
 	}
 
 	return w
@@ -114,10 +117,12 @@ func (w *wrapper) done() {
 	// indicate whether the service has stopped by runner or exited on its own.
 	// if the service is stopped by the runner (shudownRequest will be set to true), then the status will be stopped.
 	// if the service has exited on its own, then the status will be exited.
-	if w.shutdownRequest.Load() {
-		w.status = ServiceStatusStopped
-	} else {
-		w.status = ServiceStatusExited
+	if w.status != ServiceStatusFailed {
+		if w.shutdownRequest.Load() {
+			w.status = ServiceStatusStopped
+		} else {
+			w.status = ServiceStatusExited
+		}
 	}
 
 	// Record the uptime
@@ -145,6 +150,9 @@ func (w *wrapper) TermCh() chan struct{} {
 
 // reallocate the chan before starting if it is nil
 func (w *wrapper) Start() {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+
 	if w.status == ServiceStatusRunning {
 		log.Infof("Service %s is already running", w.s.Name())
 
@@ -165,7 +173,7 @@ func (w *wrapper) Start() {
 	}()
 
 	// call the pre exec hooks
-	func() {
+	hErr := func() error {
 		log.Infof("Executing pre-hooks for service %s ...", w.s.Name())
 
 		for _, h := range w.preHooks {
@@ -174,9 +182,19 @@ func (w *wrapper) Start() {
 			hErr := h.Execute()
 			if hErr != nil {
 				log.Errorf("pre-hook %s failed for service %s: %v", h.Name(), w.s.Name(), hErr)
+
+				return hErr
 			}
 		}
+
+		return nil
 	}()
+
+	if hErr != nil {
+		w.status = ServiceStatusFailed
+
+		return
+	}
 
 	// start the service
 	log.Infof("starting service %s ...", w.s.Name())
@@ -189,7 +207,7 @@ func (w *wrapper) Start() {
 	// call the post exec hooks.
 	// Note: we don't really need the ignore flag here,,
 	// as there is nothing for us to do, if the post hooks fail.
-	func() {
+	hErr = func() error {
 		log.Infof("Executing post-hooks for service %s ...", w.s.Name())
 
 		for _, h := range w.postHooks {
@@ -198,13 +216,24 @@ func (w *wrapper) Start() {
 			hErr := h.Execute()
 			if hErr != nil {
 				log.Errorf("post-hook %s failed for service %s: %v", h.Name(), w.s.Name(), hErr)
+
+				return hErr
 			}
 		}
+
+		return nil
 	}()
+
+	if hErr != nil {
+		w.status = ServiceStatusFailed
+	}
 }
 
 // Stop stops the service and waits for it to exit.
 func (w *wrapper) Stop() {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+
 	if !(w.status == ServiceStatusRunning) {
 		return
 	}
