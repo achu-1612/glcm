@@ -12,4 +12,5 @@ const (
 	ServiceStatusScheduled           ServiceStatus = "scheduled"
 	ServiceStatusScheduledForRestart ServiceStatus = "scheduled-for-restart"
 	ServiceStatusExhausted           ServiceStatus = "exhausted"
+	ServiceStatusFailed              ServiceStatus = "failed"
 )

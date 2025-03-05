@@ -208,40 +208,47 @@ func (r *runner) reconcile() {
 			continue
 		}
 
-		// auto restart the service if it is exited (not stopped) and auto-restart is enabled for the service
+		// auto restart the service if it is exited (not stopped or failed) and auto-restart is enabled for the service
 		// the service will not be started automatically if it stopped by the runner.
-		if w.Status() == ServiceStatusExited && w.AutoRestart().Enabled {
-			if w.AutoRestart().RetryCount >= w.AutoRestart().MaxRetries {
-				log.Infof("Service %s reached max retries. Not restarting ...", w.Name())
-
-				continue
-			}
-
-			backoffDuration := time.Duration(0)
-
-			if w.AutoRestart().Backoff {
-				backoffDuration = time.Duration(
-					math.Pow(float64(w.AutoRestart().BackoffExponent), float64(w.AutoRestart().RetryCount)),
-				) * time.Second
-			}
-
-			w.AutoRestart().RetryCount++
-
-			// using same flow for both immediate and backoff restarts.
-			w.AutoRestart().PendingStart.Store(true)
-
-			go func() {
-				if backoffDuration > 0 {
-					log.Infof("Service %s backing-off. Restarting in %s ...", w.Name(), backoffDuration)
-
-					<-time.After(backoffDuration)
-				}
-
-				log.Infof("Service %s restarting now ...", w.Name())
-
-				w.Start()
-			}()
+		if w.Status() != ServiceStatusExited || w.Status() != ServiceStatusFailed {
+			continue
 		}
+
+		if !w.AutoRestart().Enabled {
+			continue
+		}
+
+		if w.AutoRestart().RetryCount >= w.AutoRestart().MaxRetries {
+			log.Infof("Service %s reached max retries. Not restarting ...", w.Name())
+
+			continue
+		}
+
+		backoffDuration := time.Duration(0)
+
+		if w.AutoRestart().Backoff {
+			backoffDuration = time.Duration(
+				math.Pow(float64(w.AutoRestart().BackoffExponent), float64(w.AutoRestart().RetryCount)),
+			) * time.Second
+		}
+
+		w.AutoRestart().RetryCount++
+
+		// using same flow for both immediate and backoff restarts.
+		w.AutoRestart().PendingStart.Store(true)
+
+		go func() {
+			if backoffDuration > 0 {
+				log.Infof("Service %s backing-off. Restarting in %s ...", w.Name(), backoffDuration)
+
+				<-time.After(backoffDuration)
+			}
+
+			log.Infof("Service %s restarting now ...", w.Name())
+
+			w.Start()
+		}()
+
 	}
 }
 
