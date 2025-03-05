@@ -52,6 +52,8 @@ type wrapper struct {
 	ScheduleCronExpression string        // cron expression for scheduling the service.
 	ScheduleTimeOut        time.Duration // execution timeout for the service.
 	ScheduleMaxRuns        int           // maximum number of runs for the service.
+
+	mu *sync.Mutex
 }
 
 // AutoRestart is the configuration set for auto-restart.
@@ -84,6 +86,7 @@ func NewWrapper(s Service, wg *sync.WaitGroup, opts ServiceOptions) Wrapper {
 		ScheduleCronExpression: opts.Schedule.Cron,
 		ScheduleTimeOut:        opts.Schedule.TimeOut,
 		ScheduleMaxRuns:        opts.Schedule.MaxRuns,
+		mu:                     &sync.Mutex{},
 	}
 
 	return w
@@ -147,6 +150,9 @@ func (w *wrapper) TermCh() chan struct{} {
 
 // reallocate the chan before starting if it is nil
 func (w *wrapper) Start() {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+
 	if w.status == ServiceStatusRunning {
 		log.Infof("Service %s is already running", w.s.Name())
 
@@ -225,6 +231,9 @@ func (w *wrapper) Start() {
 
 // Stop stops the service and waits for it to exit.
 func (w *wrapper) Stop() {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+
 	if !(w.status == ServiceStatusRunning) {
 		return
 	}

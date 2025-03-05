@@ -237,7 +237,7 @@ func (r *runner) reconcile() {
 		// using same flow for both immediate and backoff restarts.
 		w.AutoRestart().PendingStart.Store(true)
 
-		go func() {
+		go func(w Wrapper) {
 			if backoffDuration > 0 {
 				log.Infof("Service %s backing-off. Restarting in %s ...", w.Name(), backoffDuration)
 
@@ -247,8 +247,7 @@ func (r *runner) reconcile() {
 			log.Infof("Service %s restarting now ...", w.Name())
 
 			w.Start()
-		}()
-
+		}(w)
 	}
 }
 
